@@ -15,7 +15,7 @@
 - **Task 1~8 (core, 쿼리, API):** 사용자가 직접 구현한다. Claude는 코드를 대신 쓰지 않고 태스크 요약, 요청 시 힌트, 디버깅, 리뷰만 한다. 리뷰는 코드 수정 없이 파일·라인 단위로 지적한다.
 - **Task 9~13 (화면, 데모 스크립트, 배포):** Claude가 이 계획대로 구현하고 사용자가 리뷰한다.
 - "Task N 시작" → Claude는 해당 태스크의 목표, 인터페이스, 주의점을 짧게 정리한다. "리뷰해줘" → 현재 diff를 이 계획과 비교해 리뷰한다.
-- 태스크 완료 시 `docs/plans/2026-10-12-session-dashboard-plan.md`의 체크박스를 갱신하고 커밋한다.
+- Step이 끝날 때마다 `docs/plans/2026-10-12-session-dashboard-plan.md`의 해당 체크박스를 `- [x]`로 바꾼다. 태스크가 끝나면 커밋한다.
 - 새 세션이나 다른 컴퓨터에서 시작할 때: repo의 `CLAUDE.md`(실행 방식), `docs/plans/2026-10-12-session-dashboard-plan.md`(계획 원문), `docs/specs/2026-10-12-session-dashboard-design.md`(설계서)를 읽는다. repo 문서가 기준이고, 아티팩트(계획 https://claude.ai/artifact/FZ1RXJbHEc71FVKZhie6wn, 설계서 https://claude.ai/artifact/9wDtE4U2m15RfTZosxuzC2)는 공유용 사본이다.
 
 ## Global Constraints
@@ -95,11 +95,11 @@ tokentrail/
 - Produces:
   - `createDb(url: string, authToken?: string): PrismaClient` (libsql adapter 사용, `file:`·`libsql://` 모두)
   - `applyMigrations(client: import('@libsql/client').Client): Promise<void>` (`prisma/migrations/*/migration.sql`을 디렉터리 이름순으로 `executeMultiple`)
-  - `getDb(): PrismaClient` (local: `DATABASE_URL` 기본 `file:./data/dashboard.db`, demo: `TURSO_DATABASE_URL`·`TURSO_AUTH_TOKEN`)
+  - `getDb(): PrismaClient` (local: `DATABASE_URL`(`.env`에 절대경로로 둔다, 아래 Step 3 참고). 값이 없으면 `.env` 설정을 안내하는 메시지로 throw. demo: `TURSO_DATABASE_URL`·`TURSO_AUTH_TOKEN`)
   - `getAppMode(): 'local' | 'demo'` (`APP_MODE`, 기본 `local`)
   - `createTestDb(): Promise<{ db: PrismaClient; url: string; cleanup: () => Promise<void> }>` (OS 임시 디렉터리에 새 파일 + applyMigrations)
 
-- [ ] **Step 1: 프로젝트 생성과 git 초기화**
+- [x] **Step 1: 프로젝트 생성과 git 초기화**
 
 ```bash
 pnpm create next-app@latest . --ts --tailwind --app --src-dir --eslint --import-alias "@/*" --use-pnpm
@@ -108,13 +108,19 @@ pnpm add -D prisma@6 vitest tsx @types/node
 mkdir -p docs/specs docs/plans data
 ```
 설치 중 "Ignored build scripts" 경고가 나오면 `pnpm approve-builds`로 Prisma 관련 패키지(`prisma`, `@prisma/client`, `@prisma/engines`)의 설치 스크립트를 허용한다.
-spec·plan 마크다운을 `docs/` 아래로 복사한다. `.gitignore`에 `data/`, `demo-snapshot.json`, `.env` 추가.
+spec·plan 마크다운을 `docs/` 아래로 복사한다. `.gitignore`에 `/data/`, `*.db`, `*.db-journal`, `demo-snapshot.json`, `.env*`와 예외 `!.env.example` 추가.
 
-- [ ] **Step 2: 설치된 Prisma 6 버전에서 driver adapter 사용법 확인**
+- [x] **Step 2: 설치된 Prisma 6 버전에서 driver adapter 사용법 확인**
 
 Prisma 공식 문서 Turso/SQLite 페이지(https://www.prisma.io/docs/orm/v6/overview/databases/turso)를 보고, 설치된 버전에 `previewFeatures = ["driverAdapters"]`가 필요한지와 `PrismaLibSQL` 생성자 시그니처(config 객체 vs client 인스턴스)를 확인해 아래 Step 3·4에 반영한다.
 
-- [ ] **Step 3: `prisma/schema.prisma` 작성**
+> 확인 결과 (6.19.3, 2026-10-15)
+> - `previewFeatures = ["driverAdapters"]`: 필요 없음. `driverAdapters`는 5.4.0 preview, 6.16.0에서 GA. Step 3 `generator` 블록에 넣지 않는다.
+> - `PrismaLibSQL`: config 객체를 받는다. `index-node.d.ts`의 `constructor(config: Config, options?: PrismaLibSQLOptions)`. Step 6 `createDb`는 `new PrismaClient({ adapter: new PrismaLibSQL({ url, authToken }) })`.
+> - adapter의 내부 클라이언트는 밖에서 쓸 수 없으므로 `applyMigrations`는 `@libsql/client`의 `createClient`로 별도 클라이언트를 만들어 받는다.
+> - 공식 예시의 `./generated/prisma` import는 새 `prisma-client` generator용이다. 이 계획은 `prisma-client-js`라 `@prisma/client`에서 import한다.
+
+- [x] **Step 3: `prisma/schema.prisma` 작성**
 
 ```prisma
 generator client {
@@ -210,8 +216,10 @@ model ImportedFile {
 }
 ```
 
-Run: `DATABASE_URL=file:./data/dashboard.db pnpm prisma migrate dev --name init`
-Expected: `prisma/migrations/<ts>_init/migration.sql` 생성, `data/dashboard.db` 생성
+먼저 루트 `.env`에 `DATABASE_URL="file:<repo 절대경로>/data/dashboard.db"`를 넣고, 같은 형식의 자리표시자를 `.env.example`에 둔다. Prisma CLI는 SQLite 상대경로를 `prisma/` 기준으로, 앱(libsql adapter)은 실행 위치 기준으로 풀기 때문에 상대경로를 쓰면 마이그레이션 DB와 앱 DB가 서로 다른 파일이 된다.
+
+Run: `pnpm prisma migrate dev --name init` (CLI가 루트 `.env`를 자동으로 읽는다)
+Expected: `prisma/migrations/<ts>_init/migration.sql` 생성, 루트 `data/dashboard.db` 생성, `prisma/data/`는 생기지 않음
 
 - [ ] **Step 4: 실패하는 테스트 작성** — `tests/core/db.test.ts`
 
@@ -227,7 +235,7 @@ test('createTestDb는 마이그레이션이 적용된 빈 DB를 만든다', asyn
 
 - [ ] **Step 5: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/db.test.ts` / Expected: FAIL (`createTestDb` 없음)
 
-- [ ] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`, `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`.
+- [ ] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`(절대경로 자리표시자), `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`(빈 값).
 
 - [ ] **Step 7: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
@@ -526,7 +534,7 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 
 - [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/importer.test.ts` / Expected: FAIL
 - [ ] **Step 3: 위 처리 순서대로 `importFile`, `runSync` 구현**
-- [ ] **Step 4: `scripts/sync.ts` 구현.** `CLAUDE_DIR`(기본 `~/.claude`)로 `runSync(getDb(), …)` 실행 후 `SyncSummary`를 한 줄로 출력. `package.json`에 `"sync": "tsx --env-file=.env scripts/sync.ts"`. `.env`가 없으면 `.env.example`을 복사해 만든다.
+- [ ] **Step 4: `scripts/sync.ts` 구현.** `CLAUDE_DIR`(기본 `~/.claude`)로 `runSync(getDb(), …)` 실행 후 `SyncSummary`를 한 줄로 출력. `package.json`에 `"sync": "tsx --env-file=.env scripts/sync.ts"`. `.env`가 없으면 `.env.example`을 복사해 만들고, `DATABASE_URL`을 repo 절대경로로 수정한다.
 - [ ] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [ ] **Step 6: 실제 로그로 확인** — Run: `pnpm run sync` 두 번 / Expected: 첫 실행에서 `filesScanned`가 `find ~/.claude/projects -name '*.jsonl' | wc -l`과 같고 `newApiCalls > 0`, 두 번째 실행은 `filesImported: 0`(진행 중인 세션 파일은 1 이하)
 - [ ] **Step 7: Commit** — `"feat: 증분 import, runSync, pnpm run sync"`
@@ -908,7 +916,7 @@ test('두 번 push해도 중복이 없다', async () => {
 - [ ] **Step 5: Turso 준비 (수동).** Turso 가입 → DB 생성 → URL·토큰을 로컬 `.env`에 저장. `dashboard.config.ts`의 `demo.projects`·`aliases` 채우기 → `pnpm run demo:export` → `demo-snapshot.json`을 직접 열어 키·경로·회사 이름이 남았는지 검토 → `pnpm run demo:push`
 - [ ] **Step 6: Vercel 배포 (수동).** GitHub에 push → Vercel 프로젝트 연결 → env `APP_MODE=demo`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` → 배포. 빌드나 런타임에서 libsql 관련 오류가 나면 Turso 공식 Prisma 가이드(https://docs.turso.tech/sdk/ts/orm/prisma)의 서버리스 설정을 따른다.
   Expected: 배포 URL에서 배너 표시, Sync·원본 보기 없음, 대시보드·목록·상세가 스냅샷 데이터로 동작, `curl -XPOST <url>/api/sync` → 403
-- [ ] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음"
+- [ ] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음"
 - [ ] **Step 8: Commit** — `"feat: 데모 push, 배포 설정, README"`
 
 **4주차 완료 기준:** Step 6 통과.

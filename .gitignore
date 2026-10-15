@@ -43,4 +43,6 @@ next-env.d.ts
 
 # local data (real session logs)
 /data/
+*.db
+*.db-journal
 demo-snapshot.json
