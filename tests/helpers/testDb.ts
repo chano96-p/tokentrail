@@ -14,8 +14,15 @@ export async function createTestDb(): Promise<{
   const url = `file:${path.join(tmpDir, "test.db")}`;
 
   const client = createClient({ url });
-  await applyMigrations(client);
-  client.close();
+
+  try {
+    await applyMigrations(client);
+  } catch (e) {
+    await rm(tmpDir, { recursive: true, force: true });
+    throw e;
+  } finally {
+    client.close();
+  }
 
   const db = createDb(url);
 
