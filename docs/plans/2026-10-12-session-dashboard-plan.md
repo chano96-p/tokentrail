@@ -15,7 +15,7 @@
 - **Task 1~8 (core, 쿼리, API):** 사용자가 직접 구현한다. Claude는 코드를 대신 쓰지 않고 태스크 요약, 요청 시 힌트, 디버깅, 리뷰만 한다. 리뷰는 코드 수정 없이 파일·라인 단위로 지적한다.
 - **Task 9~13 (화면, 데모 스크립트, 배포):** Claude가 이 계획대로 구현하고 사용자가 리뷰한다.
 - "Task N 시작" → Claude는 해당 태스크의 목표, 인터페이스, 주의점을 짧게 정리한다. "리뷰해줘" → 현재 diff를 이 계획과 비교해 리뷰한다.
-- Step이 끝날 때마다 `docs/plans/2026-10-12-session-dashboard-plan.md`의 해당 체크박스를 `- [x]`로 바꾼다. 태스크가 끝나면 커밋한다.
+- Step이 끝날 때마다 `docs/plans/2026-10-12-session-dashboard-plan.md`의 해당 체크박스를 `- [x]`로 바꾼다. 커밋은 테스트가 통과하는 의미 단위마다 한다(실패 테스트만 있는 상태는 커밋하지 않는다). 각 태스크의 마지막 "Commit" Step은 남은 변경을 커밋하는 단계로 본다.
 - 새 세션이나 다른 컴퓨터에서 시작할 때: repo의 `CLAUDE.md`(실행 방식), `docs/plans/2026-10-12-session-dashboard-plan.md`(계획 원문), `docs/specs/2026-10-12-session-dashboard-design.md`(설계서)를 읽는다. repo 문서가 기준이고, 아티팩트(계획 https://claude.ai/artifact/FZ1RXJbHEc71FVKZhie6wn, 설계서 https://claude.ai/artifact/9wDtE4U2m15RfTZosxuzC2)는 공유용 사본이다.
 
 ## Global Constraints
@@ -221,7 +221,7 @@ model ImportedFile {
 Run: `pnpm prisma migrate dev --name init` (CLI가 루트 `.env`를 자동으로 읽는다)
 Expected: `prisma/migrations/<ts>_init/migration.sql` 생성, 루트 `data/dashboard.db` 생성, `prisma/data/`는 생기지 않음
 
-- [ ] **Step 4: 실패하는 테스트 작성** — `tests/core/db.test.ts`
+- [x] **Step 4: 실패하는 테스트 작성** — `tests/core/db.test.ts`
 
 ```ts
 test('createTestDb는 마이그레이션이 적용된 빈 DB를 만든다', async () => {
@@ -233,11 +233,11 @@ test('createTestDb는 마이그레이션이 적용된 빈 DB를 만든다', asyn
 });
 ```
 
-- [ ] **Step 5: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/db.test.ts` / Expected: FAIL (`createTestDb` 없음)
+- [x] **Step 5: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/db.test.ts` / Expected: FAIL (`createTestDb` 없음)
 
-- [ ] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`(절대경로 자리표시자), `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`(빈 값).
+- [x] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`(절대경로 자리표시자), `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`(빈 값).
 
-- [ ] **Step 7: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 7: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
 - [ ] **Step 8: Commit**
 
