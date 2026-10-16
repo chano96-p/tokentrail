@@ -236,7 +236,7 @@ test('createTestDb는 마이그레이션이 적용된 빈 DB를 만든다', asyn
 
 - [x] **Step 5: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/db.test.ts` / Expected: FAIL (`createTestDb` 없음)
 
-- [x] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`(절대경로 자리표시자), `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`(빈 값).
+- [x] **Step 6: `createDb`, `applyMigrations`, `getDb`, `getAppMode`, `createTestDb` 구현.** `package.json` scripts에 `"test": "vitest run"`, `"postinstall": "prisma generate"` 추가. `.env.example`에 `APP_MODE`, `DATABASE_URL`(절대경로 자리표시자), `CLAUDE_DIR`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`(빈 값). Task 2에서 `SUBSCRIPTION_MONTHLY_USD`(선택) 추가.
 
 - [x] **Step 7: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
@@ -253,7 +253,7 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
 **Files:**
 - Create: `dashboard.config.ts`, `src/core/config.ts`, `src/core/pricing.ts`, `src/core/time.ts`
 - Modify: `prisma/schema.prisma` (+ 새 마이그레이션)
-- Test: `tests/core/pricing.test.ts`, `tests/core/time.test.ts`
+- Test: `tests/core/pricing.test.ts`, `tests/core/time.test.ts`, `tests/core/config.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -267,7 +267,7 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
     demo: { projects: string[]; aliases: Record<string, string> }; // cwd 목록, cwd → 별칭
   };
   type TokenCounts = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWrite5mTokens: number; cacheWrite1hTokens: number };
-  function loadConfig(): DashboardConfig;
+  function loadConfig(): DashboardConfig; // SUBSCRIPTION_MONTHLY_USD 환경변수가 있으면 subscriptionMonthlyUsd를 덮어쓴다
   function estimateCostUsd(tokens: TokenCounts, model: string, pricing: Record<string, Rates>): number | null;
   function totalTokens(t: TokenCounts): number;
   function toDateKey(d: Date, timeZone: string): string;            // 'YYYY-MM-DD'
@@ -278,7 +278,7 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
 
 - [x] **Step 0: 스키마에서 cache write 분리.** `ApiCall.cacheWriteTokens`를 `cacheWrite5mTokens Int`, `cacheWrite1hTokens Int` 두 컬럼으로 바꾼다. `Session.cacheWriteTokens`는 표시용 합계라 그대로 둔다. Run: `pnpm prisma migrate dev --name split_cache_write` / Expected: `prisma/migrations/<ts>_split_cache_write/migration.sql` 생성, `pnpm test` PASS
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 const pricing = {
@@ -305,13 +305,24 @@ test('dateKeysBetween은 양 끝 포함', () => {
 });
 ```
 
-- [ ] **Step 2: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/pricing.test.ts tests/core/time.test.ts` / Expected: FAIL
+- [x] **Step 2: 실행해 실패 확인** — Run: `pnpm vitest run tests/core/pricing.test.ts tests/core/time.test.ts` / Expected: FAIL
 
-- [ ] **Step 3: 구현.** `toDateKey`는 `Intl.DateTimeFormat('en-CA', { timeZone, year:'numeric', month:'2-digit', day:'2-digit' })`. `loadConfig`는 루트 `dashboard.config.ts`의 default export를 반환.
+- [x] **Step 3: 구현.** `toDateKey`는 `Intl.DateTimeFormat('en-CA', { timeZone, year:'numeric', month:'2-digit', day:'2-digit' })`. `loadConfig`는 루트 `dashboard.config.ts`의 설정을 반환.
 
-- [ ] **Step 4: `dashboard.config.ts` 작성.** `timezone: 'Asia/Seoul'`, `autoSyncOnLoad: false`, `demo: { projects: [], aliases: {} }`. `pricing`과 `subscriptionMonthlyUsd`는 Anthropic 공식 요금 페이지와 본인 구독 요금으로 채운다. 접두사가 겹치는 모델(`claude-opus-5`와 `claude-opus-5-5`, `claude-fable-5`와 `claude-fable-5-1`)은 단가가 다르면 둘 다 넣는다. 하나만 넣으면 긴 id도 짧은 쪽 단가로 조용히 계산된다. 대상 모델 목록은 Task 5 이후 `sqlite3 data/dashboard.db "select distinct model from ApiCall"`로 확인해 보완한다.
+- [x] **Step 4: `dashboard.config.ts` 작성과 구독료 환경변수.** 회사(Team)·개인(Max) 계정을 주로 다른 컴퓨터에서 쓰므로, 구독료는 컴퓨터마다 `.env`의 `SUBSCRIPTION_MONTHLY_USD`로 덮어쓸 수 있게 한다. `dashboard.config.ts`의 값은 환경변수가 없을 때의 기본값이다. 환경변수는 문자열이라 숫자로 바꾸고, 숫자가 아닌 값일 때의 처리(throw 등)는 직접 정해 테스트를 추가한다. Team 플랜은 1인당 월 금액을 넣는다. `.env.example`에 `SUBSCRIPTION_MONTHLY_USD`(빈 값) 추가.
 
-- [ ] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
+```ts
+// tests/core/config.test.ts
+test('SUBSCRIPTION_MONTHLY_USD가 있으면 구독료를 덮어쓴다', () => {
+  vi.stubEnv('SUBSCRIPTION_MONTHLY_USD', '25');
+  expect(loadConfig().subscriptionMonthlyUsd).toBe(25);
+  vi.unstubAllEnvs();
+});
+```
+
+설정 파일 값: `timezone: 'Asia/Seoul'`, `autoSyncOnLoad: false`, `demo: { projects: [], aliases: {} }`. `pricing`과 `subscriptionMonthlyUsd`는 Anthropic 공식 요금 페이지와 본인 구독 요금으로 채운다. 접두사가 겹치는 모델(`claude-opus-5`와 `claude-opus-5-5`, `claude-fable-5`와 `claude-fable-5-1`)은 단가가 다르면 둘 다 넣는다. 하나만 넣으면 긴 id도 짧은 쪽 단가로 조용히 계산된다. 대상 모델 목록은 Task 5 이후 `sqlite3 data/dashboard.db "select distinct model from ApiCall"`로 확인해 보완한다.
+
+- [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
 - [ ] **Step 6: Commit** — `git commit -am "feat: 설정, API 환산 비용, 날짜 버킷 유틸"` (새 파일은 `git add` 먼저)
 
