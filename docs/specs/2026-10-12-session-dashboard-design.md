@@ -1,6 +1,6 @@
 # 세션 분석 대시보드 설계
 
-- 상태: 설계 승인 (2026-10-12), 세션 간 중복 처리·pnpm 전환 반영 (2026-10-15)
+- 상태: 설계 승인 (2026-10-12), 세션 간 중복 처리·pnpm 전환 반영 (2026-10-15), cache write TTL 분리 (2026-10-16)
 - 범위: MVP · 주말 4회
 - 원본 아티팩트: https://claude.ai/artifact/9wDtE4U2m15RfTZosxuzC2
 
@@ -23,6 +23,7 @@
 | 주간 요약 | MVP 제외. 2단계 회고 기능과 함께 설계 | 회고에 필요한 집계 모양이 아직 정해지지 않음 |
 | 데모 본문 | 마스킹한 미리보기 노출 | 리플레이가 실제처럼 보여 포트폴리오 효과가 큼 |
 | 세션 간 중복 | 세션별로 저장(복합키). 전체 집계에서만 `messageId` 기준 중복 제거 | 이전 대화가 새 세션 파일로 복사되고, 원본 세션을 판정할 근거가 로그에 없음 |
+| cache write 단가 | 5분·1시간 TTL을 나눠 저장하고 단가도 따로 적용. 화면에는 합계로 표시 | 1시간 TTL이 cache write의 약 87%이고 단가가 5분보다 비쌈 |
 
 ## 범위
 
@@ -95,6 +96,7 @@ flowchart LR
 - 세션 로그는 `<project>/<sessionId>.jsonl`, 서브에이전트는 `<sessionId>/subagents/agent-*.jsonl`로 따로 기록된다.
 - 줄 타입이 많다(`user`, `assistant`, `system`, `attachment`, `ai-title`, `file-history-snapshot` 등). 필요한 것만 쓰고 나머지는 무시한다.
 - 토큰은 `assistant` 줄의 `message.usage`(`input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`)와 `message.model`에 있다.
+- cache write는 `message.usage.cache_creation`에 TTL별(`ephemeral_5m_input_tokens`, `ephemeral_1h_input_tokens`)로도 기록된다(2026-10-15 확인: 1시간이 약 87%). 단가가 달라 `ApiCall`에 따로 저장하고, 세션 합계와 화면의 cache write는 둘의 합이다. `cache_creation`이 없으면 전부 5분으로 본다.
 - 한 API 응답이 블록 단위(`apiBlockIndex`)로 여러 줄에 나뉘는 것으로 보인다. **`message.id`로 중복 제거하지 않으면 토큰이 여러 번 집계된다.**
 - 프로젝트는 폴더 이름이 아니라 각 줄의 `cwd`로 식별한다. `gitBranch`, `attributionSkill`, `attributionPlugin`도 있다.
 - **이전 대화가 다른 세션 파일로 복사된다.** 같은 `message.id`와 `uuid`가 서로 다른 세션 파일 2~7개에 나온다(2026-10-15 확인: assistant `message.id` 16,367개 중 4,876개, user·assistant `uuid` 49,463개 중 14,555개). 복사본은 `sessionId`만 새 세션 값이고 `timestamp`는 원본과 같다. `forkedFrom`이 붙은 경우는 일부(172건)뿐이라 어느 세션이 원본인지 판정할 수 없다.
@@ -136,7 +138,8 @@ erDiagram
     int inputTokens
     int outputTokens
     int cacheReadTokens
-    int cacheWriteTokens
+    int cacheWrite5mTokens
+    int cacheWrite1hTokens
     string stopReason
     string skill
     string plugin

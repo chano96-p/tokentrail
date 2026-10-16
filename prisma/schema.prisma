@@ -37,21 +37,22 @@ model Session {
 }
 
 model ApiCall {
-  sessionId        String
-  messageId        String
-  session          Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  agentId          String?
-  sourceFileId     String
-  sourceFile       ImportedFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
-  model            String
-  timestamp        DateTime
-  inputTokens      Int
-  outputTokens     Int
-  cacheReadTokens  Int
-  cacheWriteTokens Int
-  stopReason       String?
-  skill            String?
-  plugin           String?
+  sessionId          String
+  messageId          String
+  session            Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  agentId            String?
+  sourceFileId       String
+  sourceFile         ImportedFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+  model              String
+  timestamp          DateTime
+  inputTokens        Int
+  outputTokens       Int
+  cacheReadTokens    Int
+  cacheWrite5mTokens Int
+  cacheWrite1hTokens Int
+  stopReason         String?
+  skill              String?
+  plugin             String?
 
   @@id([sessionId, messageId])
   @@index([timestamp])

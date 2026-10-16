@@ -27,7 +27,8 @@
 - `@libsql/client`는 `^0.8`: `@prisma/adapter-libsql@6`의 의존 범위가 `^0.8`까지라, 더 높이면 클라이언트와 네이티브 바이너리가 두 벌 설치된다
 - `src/core/**`는 `next`, `react`, `src/app/**`, `src/server/**`를 import하지 않는다
 - tool_result·thinking 본문은 DB에 저장하지 않는다. `preview` 최대 500자, `inputSummary` 최대 200자 (코드 포인트 기준)
-- 총 토큰 = `inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens`
+- cache write는 TTL별 단가가 달라 `ApiCall`에 `cacheWrite5mTokens`·`cacheWrite1hTokens`로 나눠 저장한다(Task 2 Step 0). 화면·세션 합계의 `cacheWriteTokens`는 둘의 합이다
+- 총 토큰 = `inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens`(= 5m + 1h)
 - 날짜 버킷은 설정의 `timezone`(기본 `Asia/Seoul`) 기준. 서버 TZ에 의존하지 않는다
 - `APP_MODE=demo`에서는 DB 쓰기 없음. `POST /api/sync`, 원본 보기 API는 403
 - 실제 로그 파일, `data/`, `demo-snapshot.json`은 커밋하지 않는다 (`.gitignore`)
@@ -173,7 +174,7 @@ model ApiCall {
   inputTokens      Int
   outputTokens     Int
   cacheReadTokens  Int
-  cacheWriteTokens Int
+  cacheWriteTokens Int              // Task 2 Step 0에서 cacheWrite5mTokens·cacheWrite1hTokens로 분리
   stopReason       String?
   skill            String?
   plugin           String?
@@ -239,7 +240,7 @@ test('createTestDb는 마이그레이션이 적용된 빈 DB를 만든다', asyn
 
 - [x] **Step 7: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테스트 DB 헬퍼"
@@ -251,12 +252,13 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
 
 **Files:**
 - Create: `dashboard.config.ts`, `src/core/config.ts`, `src/core/pricing.ts`, `src/core/time.ts`
+- Modify: `prisma/schema.prisma` (+ 새 마이그레이션)
 - Test: `tests/core/pricing.test.ts`, `tests/core/time.test.ts`
 
 **Interfaces:**
 - Produces:
   ```ts
-  type Rates = { input: number; output: number; cacheRead: number; cacheWrite: number }; // USD / 1M tokens
+  type Rates = { input: number; output: number; cacheRead: number; cacheWrite5m: number; cacheWrite1h: number }; // USD / 1M tokens
   type DashboardConfig = {
     timezone: string;
     subscriptionMonthlyUsd: number;
@@ -264,7 +266,7 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
     pricing: Record<string, Rates>;          // key = 모델 id 접두사
     demo: { projects: string[]; aliases: Record<string, string> }; // cwd 목록, cwd → 별칭
   };
-  type TokenCounts = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
+  type TokenCounts = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWrite5mTokens: number; cacheWrite1hTokens: number };
   function loadConfig(): DashboardConfig;
   function estimateCostUsd(tokens: TokenCounts, model: string, pricing: Record<string, Rates>): number | null;
   function totalTokens(t: TokenCounts): number;
@@ -272,22 +274,26 @@ git add -A && git commit -m "chore: 프로젝트 세팅, Prisma 스키마, 테�
   function dateKeysBetween(from: Date, to: Date, timeZone: string): string[]; // 양 끝 포함
   ```
 
+로그의 `message.usage.cache_creation`에 `ephemeral_5m_input_tokens`·`ephemeral_1h_input_tokens`가 따로 있고(2026-10-15 확인: 1h가 cache write의 약 87%), 1시간 TTL 단가가 5분보다 비싸다. 그래서 단가와 저장을 TTL별로 나눈다.
+
+- [x] **Step 0: 스키마에서 cache write 분리.** `ApiCall.cacheWriteTokens`를 `cacheWrite5mTokens Int`, `cacheWrite1hTokens Int` 두 컬럼으로 바꾼다. `Session.cacheWriteTokens`는 표시용 합계라 그대로 둔다. Run: `pnpm prisma migrate dev --name split_cache_write` / Expected: `prisma/migrations/<ts>_split_cache_write/migration.sql` 생성, `pnpm test` PASS
+
 - [ ] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 const pricing = {
-  'claude-a': { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
-  'claude-a-long': { input: 1, output: 1, cacheRead: 1, cacheWrite: 1 },
+  'claude-a': { input: 3, output: 15, cacheRead: 0.3, cacheWrite5m: 3.75, cacheWrite1h: 6 },
+  'claude-a-long': { input: 1, output: 1, cacheRead: 1, cacheWrite5m: 1, cacheWrite1h: 1 },
 };
 const M = 1_000_000;
 test('백만 토큰 단가로 계산한다', () => {
-  expect(estimateCostUsd({ inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWriteTokens: M }, 'claude-a-2026', pricing)).toBeCloseTo(22.05);
+  expect(estimateCostUsd({ inputTokens: M, outputTokens: M, cacheReadTokens: M, cacheWrite5mTokens: M, cacheWrite1hTokens: M }, 'claude-a-2026', pricing)).toBeCloseTo(28.05);
 });
 test('가장 긴 접두사가 이긴다', () => {
-  expect(estimateCostUsd({ inputTokens: M, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, 'claude-a-long-1', pricing)).toBeCloseTo(1);
+  expect(estimateCostUsd({ inputTokens: M, outputTokens: 0, cacheReadTokens: 0, cacheWrite5mTokens: 0, cacheWrite1hTokens: 0 }, 'claude-a-long-1', pricing)).toBeCloseTo(1);
 });
 test('단가 없는 모델은 null', () => {
-  expect(estimateCostUsd({ inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }, '<synthetic>', pricing)).toBeNull();
+  expect(estimateCostUsd({ inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWrite5mTokens: 0, cacheWrite1hTokens: 0 }, '<synthetic>', pricing)).toBeNull();
 });
 test('toDateKey는 지정 TZ 기준', () => {
   expect(toDateKey(new Date('2026-10-11T16:30:00Z'), 'Asia/Seoul')).toBe('2026-10-12');
@@ -303,7 +309,7 @@ test('dateKeysBetween은 양 끝 포함', () => {
 
 - [ ] **Step 3: 구현.** `toDateKey`는 `Intl.DateTimeFormat('en-CA', { timeZone, year:'numeric', month:'2-digit', day:'2-digit' })`. `loadConfig`는 루트 `dashboard.config.ts`의 default export를 반환.
 
-- [ ] **Step 4: `dashboard.config.ts` 작성.** `timezone: 'Asia/Seoul'`, `autoSyncOnLoad: false`, `demo: { projects: [], aliases: {} }`. `pricing`과 `subscriptionMonthlyUsd`는 Anthropic 공식 요금 페이지와 본인 구독 요금으로 채운다. 대상 모델 목록은 Task 5 이후 `sqlite3 data/dashboard.db "select distinct model from ApiCall"`로 확인해 보완한다.
+- [ ] **Step 4: `dashboard.config.ts` 작성.** `timezone: 'Asia/Seoul'`, `autoSyncOnLoad: false`, `demo: { projects: [], aliases: {} }`. `pricing`과 `subscriptionMonthlyUsd`는 Anthropic 공식 요금 페이지와 본인 구독 요금으로 채운다. 접두사가 겹치는 모델(`claude-opus-5`와 `claude-opus-5-5`, `claude-fable-5`와 `claude-fable-5-1`)은 단가가 다르면 둘 다 넣는다. 하나만 넣으면 긴 id도 짧은 쪽 단가로 조용히 계산된다. 대상 모델 목록은 Task 5 이후 `sqlite3 data/dashboard.db "select distinct model from ApiCall"`로 확인해 보완한다.
 
 - [ ] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
@@ -323,7 +329,7 @@ test('dateKeysBetween은 양 끝 포함', () => {
   type EventKind = 'user' | 'assistant_text' | 'thinking' | 'tool_use' | 'tool_result' | 'system';
   type LineContext = { sessionId: string; agentId: string | null; cwd: string; gitBranch: string | null; cliVersion: string | null; timestamp: Date };
   type ApiCallRecord = { messageId: string; sessionId: string; agentId: string | null; model: string; timestamp: Date;
-    inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number;
+    inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWrite5mTokens: number; cacheWrite1hTokens: number;
     stopReason: string | null; skill: string | null; plugin: string | null };
   type TimelineEventRecord = { uuid: string; sessionId: string; agentId: string | null; parentUuid: string | null;
     apiCallId: string | null; timestamp: Date; kind: EventKind; toolName: string | null; inputSummary: string | null;
@@ -351,6 +357,8 @@ test('dateKeysBetween은 양 끝 포함', () => {
 
 - 한 줄에서 블록이 여러 개면 첫 블록은 줄의 `uuid`, 이후는 `${uuid}#${index}`.
 - `agentId`는 줄의 `agentId` 필드(없으면 null).
+- cache write: 합계 `total = usage.cache_creation_input_tokens ?? 0`을 기준으로 삼는다. `cacheWrite1hTokens = min(usage.cache_creation?.ephemeral_1h_input_tokens ?? 0, total)`, `cacheWrite5mTokens = total - cacheWrite1hTokens`. 그래서 `cache_creation` 객체나 키가 없으면 전부 5m가 되고, 두 값의 합은 항상 `total`과 같다.
+  - 근거(2026-10-16 확인): assistant 줄 49,723개 중 49,697개는 `5m + 1h = total`이었다. 나머지 26개는 `total`·`input`·`output`이 모두 0인데 `ephemeral_1h_input_tokens`만 수백으로 남은 줄로, 같은 `message.id`의 뒤쪽 중복 줄(값이 비워진 줄)이다. TTL 값을 그대로 믿으면 이런 줄에서 없는 토큰이 생긴다.
 - `thinking`: `contentLength` = 사고 본문 길이, `preview = null`.
 - `summarizeToolInput`: `Bash`→`input.command`, `Read`·`Write`·`Edit`→`input.file_path`, `Grep`·`Glob`→`input.pattern`, `Agent`·`Task`→`input.description`, 그 외→`input`의 첫 문자열 값. 모두 `truncate(…, 200)`, 없으면 null.
 
@@ -360,8 +368,24 @@ test('dateKeysBetween은 양 끝 포함', () => {
 test('assistant 줄은 apiCall과 이벤트를 만든다', () => {
   const r = parseLine(JSON.stringify(assistantLine({ id: 'msg_1', blocks: [{ type: 'tool_use', name: 'Bash', input: { command: 'npm test' } }] })));
   expect(r.status).toBe('ok');
-  expect(r.apiCall).toMatchObject({ messageId: 'msg_1', model: 'claude-a', inputTokens: 10, outputTokens: 5, cacheReadTokens: 100, cacheWriteTokens: 20 });
+  expect(r.apiCall).toMatchObject({ messageId: 'msg_1', model: 'claude-a', inputTokens: 10, outputTokens: 5, cacheReadTokens: 100, cacheWrite5mTokens: 15, cacheWrite1hTokens: 5 });
   expect(r.events[0]).toMatchObject({ kind: 'tool_use', toolName: 'Bash', inputSummary: 'npm test', apiCallId: 'msg_1' });
+});
+test('cache_creation이 없으면 cache write 전부를 5m로 본다', () => {
+  const line = assistantLine({ id: 'm0' });
+  delete line.message.usage.cache_creation;
+  expect(parseLine(JSON.stringify(line)).apiCall).toMatchObject({ cacheWrite5mTokens: 20, cacheWrite1hTokens: 0 });
+});
+test('TTL 키가 하나만 있으면 나머지는 합계에서 채운다', () => {
+  const line = assistantLine({ id: 'm0' });
+  line.message.usage.cache_creation = { ephemeral_5m_input_tokens: 20 };
+  expect(parseLine(JSON.stringify(line)).apiCall).toMatchObject({ cacheWrite5mTokens: 20, cacheWrite1hTokens: 0 });
+});
+test('TTL 합이 cache_creation_input_tokens보다 크면 합계를 기준으로 자른다', () => {
+  const line = assistantLine({ id: 'm0' });
+  line.message.usage.cache_creation_input_tokens = 0;
+  line.message.usage.cache_creation = { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 433 };
+  expect(parseLine(JSON.stringify(line)).apiCall).toMatchObject({ cacheWrite5mTokens: 0, cacheWrite1hTokens: 0 });
 });
 test('tool_result는 본문을 저장하지 않는다', () => {
   const r = parseLine(JSON.stringify(userToolResult({ content: 'SECRET=abc'.repeat(10), is_error: true })));
@@ -392,7 +416,7 @@ test('블록이 여러 개면 uuid에 #index를 붙인다', () => {
   expect(r.events[0]).toMatchObject({ kind: 'thinking', contentLength: 3, preview: null });
 });
 ```
-`assistantLine`, `userText`, `userToolResult`는 테스트 파일 안의 fixture 빌더. 기본값: `sessionId: 's1'`, `cwd: '/Users/me/proj'`, `gitBranch: 'main'`, `version: '2.0.0'`, `timestamp: '2026-10-12T01:00:00Z'`, `model: 'claude-a'`, usage `{input_tokens:10, output_tokens:5, cache_read_input_tokens:100, cache_creation_input_tokens:20}`.
+`assistantLine`, `userText`, `userToolResult`는 테스트 파일 안의 fixture 빌더. 기본값: `sessionId: 's1'`, `cwd: '/Users/me/proj'`, `gitBranch: 'main'`, `version: '2.0.0'`, `timestamp: '2026-10-12T01:00:00Z'`, `model: 'claude-a'`, usage `{input_tokens:10, output_tokens:5, cache_read_input_tokens:100, cache_creation_input_tokens:20, cache_creation:{ephemeral_5m_input_tokens:15, ephemeral_1h_input_tokens:5}}`.
 
 - [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/parser.test.ts` / Expected: FAIL
 - [ ] **Step 3: 위 매핑대로 구현**
@@ -466,7 +490,7 @@ test('scanLogFiles는 서브에이전트 파일까지 찾는다', async () => {
 2. `readCompleteLines` → 줄마다 `parseLine`. `malformed`는 `skippedLines`에 집계, `ignored`는 집계하지 않는다.
 3. 세션별로 모은다: 처음 본 `context`(cwd·gitBranch·cliVersion), 최소·최대 timestamp, 마지막 `title`, `ApiCallRecord`는 `messageId` 기준 Map(중복 줄 usage는 동일하므로 먼저 들어온 것 유지).
 4. 트랜잭션 하나에서: Project upsert(`cwd`, `name = path.basename(cwd)`) → Session upsert(없으면 생성. 있으면 `startedAt=min`, `endedAt=max`, `title`은 새 값이 있을 때만, `gitBranch`·`cliVersion`은 기존 값이 null일 때만, `projectId`는 바꾸지 않음) → ApiCall·TimelineEvent upsert(`where`는 복합키 `sessionId_messageId`·`sessionId_uuid`, `update: {}`) → ImportedFile upsert(`size`, `mtimeMs`, `byteOffset = nextOffset`).
-5. 영향받은 세션의 합계 재계산: ApiCall 합계 4종, `totalTokens`, `subagentCount = agentId 중 null 아닌 고유 수`.
+5. 영향받은 세션의 합계 재계산: ApiCall 합계(`inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens = cacheWrite5mTokens + cacheWrite1hTokens`), `totalTokens`, `subagentCount = agentId 중 null 아닌 고유 수`.
 
 `context` 없이 `title`만 있는 세션(파일에 ai-title만 새로 추가된 경우)은 Session이 이미 있을 때만 제목을 갱신한다.
 
@@ -554,7 +578,7 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 - Produces:
   ```ts
   type OverviewParams = { from: Date; to: Date; projectId?: string; model?: string };
-  type DailyTokens = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
+  type DailyTokens = { date: string; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number }; // cacheWrite = 5m + 1h
   type Overview = {
     totalTokens: number; sessionCount: number; activeDays: number;
     estimatedCostUsd: number; unpricedModels: string[]; subscriptionMonthlyUsd: number;
@@ -576,7 +600,7 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 - [ ] **Step 1: 실패하는 테스트 작성** (테스트 DB에 Prisma로 직접 행을 넣는 `seed()` 헬퍼를 `tests/helpers/seed.ts`에 만든다. Task 7·12·13도 이 파일을 쓴다)
 
 ```ts
-const config = { ...baseConfig, timezone: 'Asia/Seoul', pricing: { 'claude-a': { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 } } };
+const config = { ...baseConfig, timezone: 'Asia/Seoul', pricing: { 'claude-a': { input: 3, output: 15, cacheRead: 0.3, cacheWrite5m: 3.75, cacheWrite1h: 6 } } };
 test('TZ 기준으로 날짜를 나눈다', async () => {
   await seed(db, [{ id: 'm1', session: 's1', model: 'claude-a', at: '2026-10-11T16:30:00Z', input: 100 }]);
   const o = await getOverview(db, { from: new Date('2026-10-11T00:00:00+09:00'), to: new Date('2026-10-12T23:59:59+09:00') }, config);
@@ -643,7 +667,7 @@ test('getFilterOptions', async () => { /* 프로젝트 이름순, 모델 고유 
 - 정렬: `recent`는 `[startedAt desc, id desc]`, `tokens`는 `[totalTokens desc, id desc]`. Prisma `cursor: { id }, skip: 1`. `limit + 1`개를 읽어 다음 커서 판단.
 - `model` 필터는 `apiCalls: { some: { model } }`, 기간은 `startedAt` 기준.
 - 턴 묶기: 이벤트를 `timestamp`, 같으면 `uuid` 오름차순 정렬. `agentId === null`인 `user` 이벤트마다 새 턴(`id` = 그 uuid). 첫 user 이전 이벤트는 `id: 'start'` 턴.
-- `tokens`: 같은 세션의 ApiCall(`sessionId`, `messageId = apiCallId`)을 쓴다. 같은 `apiCallId`를 가진 이벤트 중 첫 이벤트에만 `{ input: inputTokens + cacheReadTokens + cacheWriteTokens, output: outputTokens }`, 나머지는 null.
+- `tokens`: 같은 세션의 ApiCall(`sessionId`, `messageId = apiCallId`)을 쓴다. 같은 `apiCallId`를 가진 이벤트 중 첫 이벤트에만 `{ input: inputTokens + cacheReadTokens + cacheWrite5mTokens + cacheWrite1hTokens, output: outputTokens }`, 나머지는 null.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
