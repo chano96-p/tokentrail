@@ -324,7 +324,7 @@ test('SUBSCRIPTION_MONTHLY_USD가 있으면 구독료를 덮어쓴다', () => {
 
 - [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 
-- [ ] **Step 6: Commit** — `git commit -am "feat: 설정, API 환산 비용, 날짜 버킷 유틸"` (새 파일은 `git add` 먼저)
+- [x] **Step 6: Commit** — `git commit -am "feat: 설정, API 환산 비용, 날짜 버킷 유틸"` (새 파일은 `git add` 먼저)
 
 ---
 
@@ -373,7 +373,7 @@ test('SUBSCRIPTION_MONTHLY_USD가 있으면 구독료를 덮어쓴다', () => {
 - `thinking`: `contentLength` = 사고 본문 길이, `preview = null`.
 - `summarizeToolInput`: `Bash`→`input.command`, `Read`·`Write`·`Edit`→`input.file_path`, `Grep`·`Glob`→`input.pattern`, `Agent`·`Task`→`input.description`, 그 외→`input`의 첫 문자열 값. 모두 `truncate(…, 200)`, 없으면 null.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 test('assistant 줄은 apiCall과 이벤트를 만든다', () => {
@@ -429,9 +429,9 @@ test('블록이 여러 개면 uuid에 #index를 붙인다', () => {
 ```
 `assistantLine`, `userText`, `userToolResult`는 테스트 파일 안의 fixture 빌더. 기본값: `sessionId: 's1'`, `cwd: '/Users/me/proj'`, `gitBranch: 'main'`, `version: '2.0.0'`, `timestamp: '2026-10-12T01:00:00Z'`, `model: 'claude-a'`, usage `{input_tokens:10, output_tokens:5, cache_read_input_tokens:100, cache_creation_input_tokens:20, cache_creation:{ephemeral_5m_input_tokens:15, ephemeral_1h_input_tokens:5}}`.
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/parser.test.ts` / Expected: FAIL
-- [ ] **Step 3: 위 매핑대로 구현**
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/parser.test.ts` / Expected: FAIL
+- [x] **Step 3: 위 매핑대로 구현**
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [ ] **Step 5: Commit** — `"feat: JSONL parser와 종류별 저장 정책"`
 
 ---
