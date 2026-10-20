@@ -9,5 +9,6 @@ export default defineConfig({
   },
   test: {
     unstubEnvs: true,
+    restoreMocks: true,
   },
 });

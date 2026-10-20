@@ -432,7 +432,7 @@ test('블록이 여러 개면 uuid에 #index를 붙인다', () => {
 - [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/parser.test.ts` / Expected: FAIL
 - [x] **Step 3: 위 매핑대로 구현**
 - [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 5: Commit** — `"feat: JSONL parser와 종류별 저장 정책"`
+- [x] **Step 5: Commit** — `"feat: JSONL parser와 종류별 저장 정책"`
 
 ---
 
@@ -450,7 +450,7 @@ test('블록이 여러 개면 uuid에 #index를 붙인다', () => {
   function readCompleteLines(path: string, fromOffset: number): Promise<{ lines: string[]; nextOffset: number }>;
   ```
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 test('마지막 개행까지만 읽고 바이트 offset을 돌려준다', async () => {
@@ -473,10 +473,10 @@ test('scanLogFiles는 서브에이전트 파일까지 찾는다', async () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/readLines.test.ts tests/core/scan.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현.** `readCompleteLines`는 `fs.open` 후 `fromOffset`부터 끝까지 Buffer로 읽고 `lastIndexOf(0x0a)`까지만 `utf8`로 디코드한다(문자열로 먼저 디코드하지 않는다). 빈 줄은 버린다.
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 5: Commit** — `"feat: 로그 파일 스캔과 바이트 offset 이어 읽기"`
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/readLines.test.ts tests/core/scan.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현.** `readCompleteLines`는 `fs.open` 후 `fromOffset`부터 끝까지 Buffer로 읽고 `lastIndexOf(0x0a)`까지만 `utf8`로 디코드한다(문자열로 먼저 디코드하지 않는다). 빈 줄은 버린다.
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 5: Commit** — `"feat: 로그 파일 스캔과 바이트 offset 이어 읽기"`
 
 ---
 
