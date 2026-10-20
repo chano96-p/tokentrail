@@ -19,6 +19,7 @@ model Session {
   projectId        String
   project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title            String?
+  titleSource      String?
   gitBranch        String?
   cliVersion       String?
   startedAt        DateTime

@@ -54,6 +54,7 @@ export function parseLine(line: string): ParsedLine {
 
   if (
     lineType !== "ai-title" &&
+    lineType !== "custom-title" &&
     lineType !== "user" &&
     lineType !== "assistant" &&
     lineType !== "system"
@@ -68,12 +69,15 @@ export function parseLine(line: string): ParsedLine {
   const sessionId = asString(entry.sessionId);
   if (!sessionId) return { status: "malformed" };
 
-  if (lineType === "ai-title") {
+  if (lineType === "ai-title" || lineType === "custom-title") {
     return {
       status: "ok",
       sessionId,
       context: null,
-      title: asString(entry.aiTitle),
+      title: asString(
+        lineType === "custom-title" ? entry.customTitle : entry.aiTitle,
+      ),
+      titleSource: lineType === "custom-title" ? "custom" : "ai",
       apiCall: null,
       events: [],
     };
@@ -211,5 +215,13 @@ export function parseLine(line: string): ParsedLine {
     });
   }
 
-  return { status: "ok", sessionId, context, title: null, apiCall, events };
+  return {
+    status: "ok",
+    sessionId,
+    context,
+    title: null,
+    titleSource: null,
+    apiCall,
+    events,
+  };
 }
