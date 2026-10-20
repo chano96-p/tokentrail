@@ -46,12 +46,15 @@ export type TimelineEventRecord = {
   preview: string | null;
 };
 
+export type TitleSource = "ai" | "custom";
+
 export type ParsedLine =
   | {
       status: "ok";
       sessionId: string;
       context: LineContext | null;
       title: string | null;
+      titleSource: TitleSource | null;
       apiCall: ApiCallRecord | null;
       events: TimelineEventRecord[];
     }

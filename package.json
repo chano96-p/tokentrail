@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "sync": "tsx --env-file=.env scripts/sync.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",
