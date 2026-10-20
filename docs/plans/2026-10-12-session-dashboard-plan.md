@@ -582,7 +582,7 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 - [x] **Step 4: `scripts/sync.ts` 구현.** `CLAUDE_DIR`(기본 `~/.claude`)로 `runSync(getDb(), …)` 실행 후 `SyncSummary`를 한 줄로 출력. `package.json`에 `"sync": "tsx --env-file=.env scripts/sync.ts"`. `.env`가 없으면 `.env.example`을 복사해 만들고, `DATABASE_URL`을 repo 절대경로로 수정한다.
 - [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [x] **Step 6: 실제 로그로 확인** — Run: `pnpm run sync` 두 번 / Expected: 첫 실행에서 `filesScanned`가 `find ~/.claude/projects -name '*.jsonl' | wc -l`과 같고 `newApiCalls > 0`, 두 번째 실행은 `filesImported: 0`(진행 중인 세션 파일은 1 이하)
-- [ ] **Step 7: Commit** — `"feat: 증분 import, runSync, pnpm run sync"`
+- [x] **Step 7: Commit** — `"feat: 증분 import, runSync, pnpm run sync"`
 
 **1주차 완료 기준:** Step 6 통과.
 
@@ -617,8 +617,12 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 
 - `totalTokens`, `estimatedCostUsd`, `unpricedModels`, `daily`, `byProject`, `byModel`, `activeDays`: `messageId` 기준으로 중복을 제거한 행으로 계산한다. 대표 행은 `sessionId` 사전순 첫 행(프로젝트 귀속에만 영향).
 - `sessionCount`, `topSessions`: 세션 단위라 중복 제거 전 행으로 계산한다(세션 파일에 기록된 호출 전부).
+- 프로젝트 필터(코드 리뷰 2026-10-20): `projectId`는 DB `where`에 넣지 않는다. 기간·모델로 가져온 행에서 대표 행을 **전체 기준으로** 고른 뒤 대표 행의 프로젝트로 거른다. 그래야 "p2만 보기"의 합계가 필터 없는 화면의 p2 막대와 같다. 세션 단위 지표는 세션의 프로젝트로 거른다.
+- 행마다 세션 제목·프로젝트 이름을 가져오지 않는다. 합계는 `session.projectId`로 내고, 이름·제목은 화면에 나갈 상위 8 프로젝트·상위 5 세션만 따로 조회한다.
+- 정렬은 합계 내림차순, 같으면 키 오름차순(동점이 상위 N 경계에 걸려도 결과가 매번 같게).
+- Task 8 메모: `to`를 `23:59:59`로 넘기면 마지막 999ms가 빠진다. API에서 `23:59:59.999`로 만들지 다음 날 0시 + `lt`로 할지 정한다. 조회 범위 상한도 입력 검증에서 둔다.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (테스트 DB에 Prisma로 직접 행을 넣는 `seed()` 헬퍼를 `tests/helpers/seed.ts`에 만든다. Task 7·12·13도 이 파일을 쓴다)
+- [x] **Step 1: 실패하는 테스트 작성** (테스트 DB에 Prisma로 직접 행을 넣는 `seed()` 헬퍼를 `tests/helpers/seed.ts`에 만든다. Task 7·12·13도 이 파일을 쓴다)
 
 ```ts
 const config = { ...baseConfig, timezone: 'Asia/Seoul', pricing: { 'claude-a': { input: 3, output: 15, cacheRead: 0.3, cacheWrite5m: 3.75, cacheWrite1h: 6 } } };
@@ -656,10 +660,10 @@ test('getFilterOptions', async () => { /* 프로젝트 이름순, 모델 고유 
 ```
 "프로젝트·모델 필터"와 "getFilterOptions"는 주석에 적힌 시드와 기대값 그대로 작성한다.
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 5: Commit** — `"feat: 대시보드 집계 쿼리와 필터 옵션"`
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현**
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 5: Commit** — `"feat: 대시보드 집계 쿼리와 필터 옵션"`
 
 ---
 
