@@ -346,7 +346,7 @@ test('SUBSCRIPTION_MONTHLY_USD가 있으면 구독료를 덮어쓴다', () => {
     apiCallId: string | null; timestamp: Date; kind: EventKind; toolName: string | null; inputSummary: string | null;
     isError: boolean; contentLength: number; preview: string | null };
   type ParsedLine =
-    | { status: 'ok'; sessionId: string; context: LineContext | null; title: string | null; apiCall: ApiCallRecord | null; events: TimelineEventRecord[] }
+    | { status: 'ok'; sessionId: string; context: LineContext | null; title: string | null; titleSource: 'ai' | 'custom' | null; apiCall: ApiCallRecord | null; events: TimelineEventRecord[] }
     | { status: 'ignored' }
     | { status: 'malformed' };
   function parseLine(line: string): ParsedLine;
@@ -359,7 +359,8 @@ test('SUBSCRIPTION_MONTHLY_USD가 있으면 구독료를 덮어쓴다', () => {
 | 줄 | 결과 |
 |---|---|
 | JSON 파싱 실패 | `malformed` |
-| `type: 'ai-title'` | `ok`, `title = aiTitle`, `context = null`, 이벤트 없음 |
+| `type: 'ai-title'` | `ok`, `title = aiTitle`, `titleSource = 'ai'`, `context = null`, 이벤트 없음 |
+| `type: 'custom-title'` | `ok`, `title = customTitle`, `titleSource = 'custom'`, `context = null`, 이벤트 없음 (Task 5에서 추가) |
 | `type: 'assistant'` | `context` + `apiCall`(`message.id`, `message.model`, `message.usage.*`, `message.stop_reason`, `attributionSkill`, `attributionPlugin`) + content 블록마다 이벤트 (`text`→`assistant_text`, `thinking`→`thinking`, `tool_use`→`tool_use`), 각 이벤트 `apiCallId = message.id` |
 | `type: 'user'`, `isMeta !== true`, content가 문자열 또는 `text` 블록 | `user` 이벤트 |
 | `type: 'user'`, content의 `tool_result` 블록 | `tool_result` 이벤트 (`isError = is_error === true`, `contentLength` = 본문 문자 수, `preview = null`) |
@@ -483,8 +484,13 @@ test('scanLogFiles는 서브에이전트 파일까지 찾는다', async () => {
 ### Task 5: Import, sync, CLI
 
 **Files:**
-- Create: `src/core/importer/importFile.ts`, `src/core/importer/sync.ts`, `scripts/sync.ts`
+- Create: `src/core/importer/importFile.ts`, `src/core/importer/sync.ts`, `scripts/sync.ts`, `tests/helpers/fixtures.ts`
+- Modify: `prisma/schema.prisma`(+ 마이그레이션), `src/core/parser/types.ts`, `src/core/parser/parseLine.ts`, `tests/core/parser.test.ts`
 - Test: `tests/core/importer.test.ts`
+
+**진행 방식(B, 2026-10-20 결정):** `importFile`과 custom-title 처리(parser·스키마)는 Claude가 구현하고 설명한다. fixture 빌더 이동, importer 테스트, `runSync`, `scripts/sync.ts`는 사용자가 구현한다.
+
+**제목 규칙(2026-10-20 결정):** 로그에는 사용자가 붙인 `custom-title` 줄이 `ai-title`보다 훨씬 많다(세션 161개 중 custom 131개, ai 10개). 제목은 `custom-title`을 우선한다. 같은 세션에서 여러 번 바뀌면 마지막 값을 쓴다. `ai-title`은 `custom-title`로 정한 제목을 덮어쓰지 않는다. 증분 sync에서도 이 규칙을 지키려고 `Session.titleSource`(`'ai' | 'custom' | null`)에 제목 출처를 저장한다.
 
 **Interfaces:**
 - Consumes: `parseLine` (Task 3), `scanLogFiles`, `readCompleteLines` (Task 4), `createTestDb` (Task 1)
@@ -499,13 +505,17 @@ test('scanLogFiles는 서브에이전트 파일까지 찾는다', async () => {
 `importFile` 처리 순서:
 1. `ImportedFile`을 path로 조회해 spec 3절 표대로 상태 결정. `reimported`면 그 파일의 `ApiCall`·`TimelineEvent`를 지우고 offset 0.
 2. `readCompleteLines` → 줄마다 `parseLine`. `malformed`는 `skippedLines`에 집계, `ignored`는 집계하지 않는다.
-3. 세션별로 모은다: 처음 본 `context`(cwd·gitBranch·cliVersion), 최소·최대 timestamp, 마지막 `title`, `ApiCallRecord`는 `messageId` 기준 Map(중복 줄 usage는 동일하므로 먼저 들어온 것 유지).
-4. 트랜잭션 하나에서: Project upsert(`cwd`, `name = path.basename(cwd)`) → Session upsert(없으면 생성. 있으면 `startedAt=min`, `endedAt=max`, `title`은 새 값이 있을 때만, `gitBranch`·`cliVersion`은 기존 값이 null일 때만, `projectId`는 바꾸지 않음) → ApiCall·TimelineEvent upsert(`where`는 복합키 `sessionId_messageId`·`sessionId_uuid`, `update: {}`) → ImportedFile upsert(`size`, `mtimeMs`, `byteOffset = nextOffset`).
+3. 세션별로 모은다: 처음 본 `context`(cwd, 그리고 처음 나온 null 아닌 gitBranch·cliVersion), 최소·최대 timestamp, 제목 규칙에 따른 `title`·`titleSource`, `ApiCallRecord`는 `messageId` 기준 Map(중복 줄 usage는 동일하므로 먼저 들어온 것 유지).
+4. 트랜잭션 하나에서: Project upsert(`cwd`, `name = path.basename(cwd)`) → Session upsert(없으면 생성. 있으면 `startedAt=min`, `endedAt=max`, `title`은 제목 규칙대로(새 값이 custom이면 항상, ai면 기존 출처가 custom이 아닐 때만), `gitBranch`·`cliVersion`은 기존 값이 null일 때만, `projectId`는 바꾸지 않음) → ApiCall·TimelineEvent 삽입. 구현은 `sourceFileId`가 먼저 필요해 ImportedFile upsert(`size`, `mtimeMs`, `byteOffset = nextOffset`)를 맨 앞에서 하고, 세션별로 기존 키(`sessionId`+`messageId`, `sessionId`+`uuid`)를 IN으로 조회(500개 단위)한 뒤 `createMany`로 새 행만 넣는다. 행마다 upsert하면 실제 로그 수만 행에서 너무 느리다.
 5. 영향받은 세션의 합계 재계산: ApiCall 합계(`inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens = cacheWrite5mTokens + cacheWrite1hTokens`), `totalTokens`, `subagentCount = agentId 중 null 아닌 고유 수`.
 
-`context` 없이 `title`만 있는 세션(파일에 ai-title만 새로 추가된 경우)은 Session이 이미 있을 때만 제목을 갱신한다.
+`context` 없이 `title`만 있는 세션(파일에 ai-title·custom-title만 새로 추가된 경우)은 Session이 이미 있을 때만 제목을 갱신한다. Session이 없어 버린 경우에는 `byteOffset`을 앞으로 보내지 않고 다음 sync에서 같은 구간을 다시 읽는다(코드 리뷰 2026-10-20: 실제 로그 249개 중 51개 파일에서 제목 줄이 첫 context 줄보다 앞에 있음). 이미 저장한 행은 키로 걸러져 결과는 같다.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (fixture는 임시 `claudeDir/projects/p/` 아래에 Task 3 빌더로 줄을 써서 만든다)
+`appended`인데 새로 읽은 완성된 줄이 없으면(쓰는 중인 마지막 줄만 늘어난 경우) 트랜잭션 없이 `unchanged`로 돌려준다.
+
+- [x] **Step 0: custom-title 처리 (Claude).** `ParsedLine`에 `titleSource` 추가, `parseLine`이 `custom-title` 줄을 처리, parser 테스트 추가. `Session`에 `titleSource String?` 추가 → `pnpm prisma migrate dev --name add_title_source`.
+
+- [x] **Step 1: 실패하는 테스트 작성** (fixture는 임시 `claudeDir/projects/p/` 아래에 Task 3 빌더로 줄을 써서 만든다)
 
 ```ts
 test('중복 message.id는 한 번만 집계된다', async () => {
@@ -567,11 +577,11 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
 ```
 (마지막 두 테스트는 Review Focus 3·5, 복사 테스트는 Review Focus 6. 서브에이전트 테스트는 경로 정렬상 `p/a/...`가 `p/z/...`보다 먼저 import되도록 배치했다.)
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/importer.test.ts` / Expected: FAIL
-- [ ] **Step 3: 위 처리 순서대로 `importFile`, `runSync` 구현**
-- [ ] **Step 4: `scripts/sync.ts` 구현.** `CLAUDE_DIR`(기본 `~/.claude`)로 `runSync(getDb(), …)` 실행 후 `SyncSummary`를 한 줄로 출력. `package.json`에 `"sync": "tsx --env-file=.env scripts/sync.ts"`. `.env`가 없으면 `.env.example`을 복사해 만들고, `DATABASE_URL`을 repo 절대경로로 수정한다.
-- [ ] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 6: 실제 로그로 확인** — Run: `pnpm run sync` 두 번 / Expected: 첫 실행에서 `filesScanned`가 `find ~/.claude/projects -name '*.jsonl' | wc -l`과 같고 `newApiCalls > 0`, 두 번째 실행은 `filesImported: 0`(진행 중인 세션 파일은 1 이하)
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/importer.test.ts` / Expected: FAIL
+- [x] **Step 3: 위 처리 순서대로 `importFile`, `runSync` 구현**
+- [x] **Step 4: `scripts/sync.ts` 구현.** `CLAUDE_DIR`(기본 `~/.claude`)로 `runSync(getDb(), …)` 실행 후 `SyncSummary`를 한 줄로 출력. `package.json`에 `"sync": "tsx --env-file=.env scripts/sync.ts"`. `.env`가 없으면 `.env.example`을 복사해 만들고, `DATABASE_URL`을 repo 절대경로로 수정한다.
+- [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 6: 실제 로그로 확인** — Run: `pnpm run sync` 두 번 / Expected: 첫 실행에서 `filesScanned`가 `find ~/.claude/projects -name '*.jsonl' | wc -l`과 같고 `newApiCalls > 0`, 두 번째 실행은 `filesImported: 0`(진행 중인 세션 파일은 1 이하)
 - [ ] **Step 7: Commit** — `"feat: 증분 import, runSync, pnpm run sync"`
 
 **1주차 완료 기준:** Step 6 통과.

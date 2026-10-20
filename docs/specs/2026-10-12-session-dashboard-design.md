@@ -117,7 +117,8 @@ erDiagram
   Session {
     string id PK "sessionId"
     string projectId FK
-    string title "ai-title"
+    string title "custom-title 우선, 없으면 ai-title"
+    string titleSource "ai | custom"
     string gitBranch
     string cliVersion
     datetime startedAt
@@ -222,7 +223,7 @@ erDiagram
 
 ### 세션 목록 `/sessions`
 
-- 컬럼: 제목(ai-title), 프로젝트, 브랜치, 시작 시각, 소요 시간, 토큰, 서브에이전트 수
+- 컬럼: 제목(custom-title 우선, 없으면 ai-title), 프로젝트, 브랜치, 시작 시각, 소요 시간, 토큰, 서브에이전트 수
 - 필터: 프로젝트, 기간, 모델. 정렬: 최신순, 토큰순
 - 커서 페이지네이션. 필터 변경 중에는 이전 결과를 유지해 깜빡임을 막는다.
 
