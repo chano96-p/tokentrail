@@ -1,5 +1,5 @@
 import type { DashboardConfig } from "@/core/config";
-import { estimateCostUsd, type TokenCounts, totalTokens } from "@/core/pricing";
+import { estimateCostUsd, totalTokens } from "@/core/pricing";
 import { dateKeysBetween, toDateKey } from "@/core/time";
 import type { PrismaClient } from "@prisma/client";
 
@@ -76,20 +76,13 @@ export async function getOverview(
   });
   type Row = (typeof rows)[number];
 
-  const tokensOf = (row: Row): TokenCounts => ({
-    inputTokens: row.inputTokens,
-    outputTokens: row.outputTokens,
-    cacheReadTokens: row.cacheReadTokens,
-    cacheWrite5mTokens: row.cacheWrite5mTokens,
-    cacheWrite1hTokens: row.cacheWrite1hTokens,
-  });
   const inProject = (row: Row) =>
     !params.projectId || row.session.projectId === params.projectId;
 
   const sessionTotals = new Map<string, number>();
   for (const row of rows) {
     if (inProject(row)) {
-      addTo(sessionTotals, row.sessionId, totalTokens(tokensOf(row)));
+      addTo(sessionTotals, row.sessionId, totalTokens(row));
     }
   }
 
@@ -124,22 +117,20 @@ export async function getOverview(
   let estimatedCostUsd = 0;
 
   for (const row of uniqueRows) {
-    const tokens = tokensOf(row);
-    const rowTotal = totalTokens(tokens);
+    const rowTotal = totalTokens(row);
     total += rowTotal;
 
     const dateKey = toDateKey(row.timestamp, config.timezone);
     activeDates.add(dateKey);
     const day = daily.get(dateKey);
     if (day) {
-      day.inputTokens += tokens.inputTokens;
-      day.outputTokens += tokens.outputTokens;
-      day.cacheReadTokens += tokens.cacheReadTokens;
-      day.cacheWriteTokens +=
-        tokens.cacheWrite5mTokens + tokens.cacheWrite1hTokens;
+      day.inputTokens += row.inputTokens;
+      day.outputTokens += row.outputTokens;
+      day.cacheReadTokens += row.cacheReadTokens;
+      day.cacheWriteTokens += row.cacheWrite5mTokens + row.cacheWrite1hTokens;
     }
 
-    const cost = estimateCostUsd(tokens, row.model, config.pricing);
+    const cost = estimateCostUsd(row, row.model, config.pricing);
     if (cost === null) unpricedModels.add(row.model);
     else estimatedCostUsd += cost;
 

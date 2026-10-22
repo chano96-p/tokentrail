@@ -694,7 +694,9 @@ test('getFilterOptions', async () => { /* 프로젝트 이름순, 모델 고유 
 - 턴 묶기: 이벤트를 `timestamp`, 같으면 `uuid` 오름차순 정렬. `agentId === null`인 `user` 이벤트마다 새 턴(`id` = 그 uuid). 첫 user 이전 이벤트는 `id: 'start'` 턴.
 - `tokens`: 같은 세션의 ApiCall(`sessionId`, `messageId = apiCallId`)을 쓴다. 같은 `apiCallId`를 가진 이벤트 중 첫 이벤트에만 `{ input: inputTokens + cacheReadTokens + cacheWrite5mTokens + cacheWrite1hTokens, output: outputTokens }`, 나머지는 null.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- `limit`은 쿼리에서 1~50으로 묶는다(API를 거치지 않는 호출도 보호). 토큰 배지·비용은 ApiCall 행을 `TokenCounts`로 그대로 넘긴다(칼럼 이름이 같다).
+
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 test('커서 페이지네이션으로 겹치지 않게 넘긴다', async () => {
@@ -724,9 +726,9 @@ test('턴 묶기와 토큰 배지', async () => {
 test('없는 세션은 null', async () => { expect(await getSessionDetail(db, 'nope', config)).toBeNull(); });
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server/sessions.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server/sessions.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현**
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [ ] **Step 5: Commit** — `"feat: 세션 목록·상세 쿼리"`
 
 ---
@@ -835,6 +837,8 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 
 **Interfaces:**
 - Consumes: `GET /api/sessions`, `useUrlFilters`, `FilterBar` (Task 9)
+
+- 필터·정렬이 바뀌면 커서를 버리고 첫 페이지부터 다시 읽는다(코드 리뷰 2026-10-22). 이전 커서 행이 새 필터에서 빠져 있으면 `skip: 1`이 정상 행을 건너뛸 수 있다. 필터·정렬 값을 `queryKey`에 넣으면 된다.
 
 - [ ] **Step 1: 구현.** `useInfiniteQuery`(`getNextPageParam = last.nextCursor`), `placeholderData: keepPreviousData`. 컬럼: 제목(없으면 "제목 없음"), 프로젝트, 브랜치, 시작 시각(`timezone` 기준 `MM.DD HH:mm`), 소요 시간(`1h 05m`), 토큰(`1.2M` 축약), 서브에이전트 수. 정렬 토글 최신순/토큰순(`sort` URL 파라미터). 행 클릭 → 상세. 하단 "더 보기" 버튼.
 - [ ] **Step 2: 수동 확인** — Expected: 필터 변경 중 이전 목록이 유지되다 교체됨, 더 보기로 중복 없이 이어짐, 토큰순 정렬 동작
