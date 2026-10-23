@@ -1,4 +1,9 @@
-import { dateKeysBetween, toDateKey } from "@/core/time";
+import {
+  dateKeysBetween,
+  endOfDayInZone,
+  startOfDayInZone,
+  toDateKey,
+} from "@/core/time";
 import { expect, test } from "vitest";
 
 test("toDateKey는 지정 TZ 기준", () => {
@@ -42,4 +47,23 @@ test("dateKeysBetween은 서머타임 전환일도 하루씩 센다", () => {
       "America/New_York",
     ),
   ).toEqual(["2026-03-07", "2026-03-08", "2026-03-09"]);
+});
+
+test("startOfDayInZone·endOfDayInZone은 그 시간대의 하루 시작·끝", () => {
+  expect(startOfDayInZone("2026-10-06", "Asia/Seoul").toISOString()).toBe(
+    "2026-10-05T15:00:00.000Z",
+  );
+  expect(endOfDayInZone("2026-12-31", "Asia/Seoul").toISOString()).toBe(
+    "2026-12-31T14:59:59.999Z",
+  );
+});
+
+test("startOfDayInZone은 서머타임 전환일에도 현지 0시", () => {
+  // 시드니: 10/4 서머타임 시작(+10 → +11), 4/5 종료(+11 → +10)
+  expect(startOfDayInZone("2026-10-04", "Australia/Sydney").toISOString()).toBe(
+    "2026-10-03T14:00:00.000Z",
+  );
+  expect(startOfDayInZone("2026-04-05", "Australia/Sydney").toISOString()).toBe(
+    "2026-04-04T13:00:00.000Z",
+  );
 });

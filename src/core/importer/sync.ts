@@ -10,6 +10,11 @@ export type SyncSummary = {
   skippedLines: number;
 };
 
+// sync 스크립트와 API가 같은 기본값을 쓰도록 한 곳에 둔다.
+export function getClaudeDir(): string {
+  return process.env.CLAUDE_DIR || "~/.claude";
+}
+
 export async function runSync(
   db: PrismaClient,
   claudeDir: string,

@@ -729,7 +729,7 @@ test('없는 세션은 null', async () => { expect(await getSessionDetail(db, 'n
 - [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server/sessions.test.ts` / Expected: FAIL
 - [x] **Step 3: 구현**
 - [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 5: Commit** — `"feat: 세션 목록·상세 쿼리"`
+- [x] **Step 5: Commit** — `"feat: 세션 목록·상세 쿼리"`
 
 ---
 
@@ -747,7 +747,9 @@ test('없는 세션은 null', async () => { expect(await getSessionDetail(db, 'n
   //  range=7d|30d (기본 7d): 오늘(timeZone) 포함 7·30일, from=해당 날짜 00:00, to=now
   //  from=YYYY-MM-DD&to=YYYY-MM-DD 가 있으면 range보다 우선, timeZone 기준 하루 시작·끝
   //  project, model → projectId, model
-  function parseSessionListParams(sp: URLSearchParams, timeZone: string): SessionListParams; // sort 기본 'recent'
+  function parseSessionListParams(sp: URLSearchParams, now: Date, timeZone: string): SessionListParams; // sort 기본 'recent'
+  //  두 함수는 날짜 처리를 parseDateRange(sp, now, timeZone)로 공유한다. FilterBar가 대시보드와 세션 목록에 같은 URL 값(range 또는 from·to)을 쓰므로 같은 URL이면 같은 기간이 나와야 한다.
+  //  날짜 계산은 src/core/time.ts의 startOfDayInZone·endOfDayInZone·addDays를 쓴다.
   function readRawLine(filePath: string, uuid: string): Promise<unknown | null>; // uuid의 '#n' 접미사 제거 후 그 uuid를 가진 줄의 JSON 객체
   ```
   | Route | 응답 |
@@ -759,9 +761,11 @@ test('없는 세션은 null', async () => { expect(await getSessionDetail(db, 'n
   | `POST /api/sync` | `SyncSummary`, demo면 403 `{ error: '데모에서는 sync를 사용할 수 없습니다.' }` |
   | `GET /api/sessions/[id]/events/[uuid]/raw` | `{ line: unknown }`, demo면 403, 이벤트·줄이 없으면 404 (`uuid`는 세션 간에 겹치므로 세션 id와 함께 찾는다) |
 
-Route 파일은 파라미터 파싱 → 쿼리 호출 → `Response.json`만 한다. 모든 route에 `export const dynamic = 'force-dynamic'`.
+- 입력 검증(코드 리뷰 2026-10-23): `from`·`to`가 형식이 틀리거나 없는 날짜(`2026-02-31`)면 400 대신 기본 range로 대체한다(`sort`·`limit`과 같은 방식). `readRawLine`은 파일이 없으면(ENOENT) `null`을 돌려 raw route가 404를 낸다. `startOfDayInZone`은 서머타임 전환일에 오프셋을 한 번 더 보정한다. `CLAUDE_DIR` 기본값은 `getClaudeDir()`(`src/core/importer/sync.ts`) 하나를 쓴다.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+Route 파일은 파라미터 파싱 → 쿼리 호출 → `Response.json`만 한다. 이 프로젝트는 `next.config.ts`에서 `cacheComponents: true`라 `export const dynamic`을 쓸 수 없다(Next 16 문서: route segment config에서 제거됨). GET은 요청 시점 실행이 기본이고, 요청 객체를 읽지 않는 GET(`/api/filters`)은 빌드 때 미리 실행되지 않도록 첫 줄에서 `await connection()`(`next/server`)을 부른다. POST는 캐시되지 않는다.
+
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 test('range=7d는 오늘 포함 7일', () => {
@@ -779,18 +783,18 @@ test('demo 모드에서 sync와 raw는 403', async () => {
   expect((await rawGET(new Request('http://x'), { params: Promise.resolve({ id: 's1', uuid: 'u1' }) })).status).toBe(403);
 });
 test('readRawLine은 #접미사를 떼고 원본 줄을 찾는다', async () => {
-  const p = tmpFile([JSON.stringify({ uuid: 'u0' }), JSON.stringify({ uuid: 'u1', message: { content: '전체' } })].join('\n') + '\n');
+  const p = await tmpFile([JSON.stringify({ uuid: 'u0' }), JSON.stringify({ uuid: 'u1', message: { content: '전체' } })].join('\n') + '\n');
   expect(await readRawLine(p, 'u1#2')).toEqual({ uuid: 'u1', message: { content: '전체' } });
   expect(await readRawLine(p, 'zz')).toBeNull();
 });
 ```
 Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Handler 문서를 따른다.
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server tests/core/raw.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 5: 수동 확인** — Run: `pnpm dev` 후 `curl -s localhost:3000/api/overview | head -c 300`, `curl -s -XPOST localhost:3000/api/sync` / Expected: JSON 응답, sync 결과 요약
-- [ ] **Step 6: Commit** — `"feat: 조회·sync·원본 보기 API와 demo 가드"`
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/server tests/core/raw.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현**
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 5: 수동 확인** — Run: `pnpm dev` 후 `curl -s localhost:3000/api/overview | head -c 300`, `curl -s -XPOST localhost:3000/api/sync` / Expected: JSON 응답, sync 결과 요약
+- [x] **Step 6: Commit** — `"feat: 조회·sync·원본 보기 API와 demo 가드"`
 
 ---
 
@@ -815,6 +819,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 - [ ] **Step 1: `Providers`.** `QueryClient`(staleTime 30초), sonner `<Toaster />`, 모드 context. `mode === 'local' && autoSync`면 마운트 시 1회 `POST /api/sync` 후 `invalidateQueries()`.
 - [ ] **Step 2: 루트 layout**은 서버에서 `getAppMode()`와 `loadConfig().autoSyncOnLoad`를 읽어 `Providers`에 넘긴다.
 - [ ] **Step 3: `AppHeader`**(앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
+- Sync 주의(Task 8 리뷰): 서버에는 동시 실행 가드가 없다. 두 sync가 겹치면 같은 offset을 읽어 기본키 충돌(500)이 날 수 있으므로 `SyncButton`은 `isPending` 동안 비활성화하고, 자동 sync가 도는 중에도 같은 mutation 상태를 보게 한다. 처리되지 않은 예외는 Next 기본 500(JSON 아님)이라 실패 토스트는 응답 본문이 JSON이 아닐 때도 메시지를 만들어야 한다.
 - [ ] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`), "마지막 데이터 반영 {상대 시각}". 값은 `useUrlFilters`.
 - [ ] **Step 5: 대시보드 위젯.** 토큰 4종 색은 spec 아티팩트와 같게 Tailwind 테마 변수로 정의(`--tok-in`, `--tok-out`, `--tok-cr`, `--tok-cw`).
   - `KpiCards`: 총 토큰, 세션 수, 활동일, API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
@@ -860,7 +865,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
   - 숨김 토글 thinking·system(`hide` URL 파라미터, 기본 숨김 없음)
   - `EventRow` 표시 규칙: `user` 프롬프트 강조 배경, `assistant_text` 미리보기, `tool_use` "툴 이름 + `inputSummary`(mono)", `tool_result` "✓/✗ + 길이(KB)", `thinking` "생각함 ({contentLength}자)", `system` subtype. 오른쪽에 `tokens` 배지 `{input} in / {output} out`
   - `agentId`가 있는 이벤트는 들여쓰기 + 왼쪽 선 + `[agent {agentId 앞 6자}]` 라벨
-  - local 모드에서만 각 행에 "원본 보기" → `RawViewer`가 `/api/sessions/[id]/events/[uuid]/raw`를 조회해 `JSON.stringify(line, null, 2)`를 접이식 `<pre>`로 표시
+  - local 모드에서만 각 행에 "원본 보기" → `RawViewer`가 `/api/sessions/[id]/events/[uuid]/raw`를 조회해(uuid의 `#n`이 URL fragment로 잘리지 않게 `encodeURIComponent`) `JSON.stringify(line, null, 2)`를 접이식 `<pre>`로 표시
   - 404면 "세션을 찾을 수 없습니다" + 목록 링크
 - [ ] **Step 2: 수동 확인** — Expected: 서브에이전트를 쓴 세션에서 들여쓰기·라벨 표시, 원본 보기에 전체 본문, thinking 숨김 토글 동작, demo 모드에서 원본 보기 없음
 - [ ] **Step 3: Commit** — `"feat: 세션 상세 타임라인과 원본 보기"`

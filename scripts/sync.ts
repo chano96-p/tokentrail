@@ -1,4 +1,4 @@
-import { runSync } from "@/core/importer/sync";
+import { getClaudeDir, runSync } from "@/core/importer/sync";
 import { getDb } from "@/server/db";
 import { getAppMode } from "@/server/mode";
 
@@ -10,12 +10,11 @@ async function main() {
     );
   }
 
-  const claudeDir = process.env.CLAUDE_DIR || "~/.claude";
   const db = getDb();
 
   try {
     const startedAt = Date.now();
-    const summary = await runSync(db, claudeDir);
+    const summary = await runSync(db, getClaudeDir());
     const elapsedSeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
 
     console.log(
