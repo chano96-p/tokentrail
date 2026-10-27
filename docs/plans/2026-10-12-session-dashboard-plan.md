@@ -873,15 +873,22 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 **Interfaces:**
 - Consumes: `GET /api/sessions/[id]`, `GET /api/sessions/[id]/events/[uuid]/raw`, `useAppMode` (Task 9)
 
-- [ ] **Step 1: 구현.**
+- [x] **Step 1: 구현.**
   - `SessionHeader`: 제목 · 프로젝트 · 브랜치 · 소요 시간 · 총 토큰 · `≈ $x`
   - 숨김 토글 thinking·system(`hide` URL 파라미터, 기본 숨김 없음)
   - `EventRow` 표시 규칙: `user` 프롬프트 강조 배경, `assistant_text` 미리보기, `tool_use` "툴 이름 + `inputSummary`(mono)", `tool_result` "✓/✗ + 길이(KB)", `thinking` "생각함 ({contentLength}자)", `system` subtype. 오른쪽에 `tokens` 배지 `{input} in / {output} out`
   - `agentId`가 있는 이벤트는 들여쓰기 + 왼쪽 선 + `[agent {agentId 앞 6자}]` 라벨
   - local 모드에서만 각 행에 "원본 보기" → `RawViewer`가 `/api/sessions/[id]/events/[uuid]/raw`를 조회해(uuid의 `#n`이 URL fragment로 잘리지 않게 `encodeURIComponent`) `JSON.stringify(line, null, 2)`를 접이식 `<pre>`로 표시
   - 404면 "세션을 찾을 수 없습니다" + 목록 링크
-- [ ] **Step 2: 수동 확인** — Expected: 서브에이전트를 쓴 세션에서 들여쓰기·라벨 표시, 원본 보기에 전체 본문, thinking 숨김 토글 동작, demo 모드에서 원본 보기 없음
-- [ ] **Step 3: Commit** — `"feat: 세션 상세 타임라인과 원본 보기"`
+- 구현 메모(2026-10-27):
+  - `tool_result`·`thinking`의 길이는 저장값이 글자 수라 KB가 아니라 "3.2k자"로 표시한다.
+  - 404 구분을 위해 API 클라이언트가 상태 코드를 담은 `ApiError`를 던진다. 상세·원본 쿼리는 공용 `retryUnlessClientError`로 4xx(없는 세션·원본 줄, demo 403)면 재시도하지 않는다(코드 리뷰 2026-10-27). 상세를 다시 불러오다 실패하면 이전 데이터 위에 `StaleNotice`를 띄운다.
+  - 행 버튼 문구는 공간 때문에 "원본 보기" 대신 "원본"으로 줄였다.
+  - 경로 파라미터는 Suspense 안의 서버 컴포넌트에서 `await params` 한다(cacheComponents). 헤더 메뉴의 `usePathname()`도 같은 이유로 Suspense 안에 뒀다(없으면 `/sessions/[id]` 빌드 실패).
+  - 수동 확인에서 demo 모드의 "원본 보기 없음"은 로컬에 Turso가 없어 화면으로 보지 못했다(코드상 `mode === "local"`일 때만 버튼을 그린다). 원본 파일이 디스크에서 지워진 세션은 "원본 줄을 찾을 수 없습니다"가 나온다.
+  - 후속 후보: `<command-name>`, `<task-notification>` 같은 user 줄도 지금은 사람이 보낸 프롬프트로 보고 새 턴을 연다. parser에서 구분할지 정한다.
+- [x] **Step 2: 수동 확인** — Expected: 서브에이전트를 쓴 세션에서 들여쓰기·라벨 표시, 원본 보기에 전체 본문, thinking 숨김 토글 동작, demo 모드에서 원본 보기 없음
+- [x] **Step 3: Commit** — `"feat: 세션 상세 타임라인과 원본 보기"`
 
 **3주차 완료 기준:** Step 2 통과.
 

@@ -8,6 +8,11 @@ export function formatTokens(value: number): string {
   return compactNumber.format(value);
 }
 
+// 저장된 길이는 글자 수(코드 포인트)라 바이트 단위가 아니라 "자"로 표시한다.
+export function formatChars(count: number): string {
+  return `${compactNumber.format(count)}자`;
+}
+
 export function formatUsd(value: number): string {
   return `$${value.toLocaleString("en", { maximumFractionDigits: value < 10 ? 2 : 0 })}`;
 }
