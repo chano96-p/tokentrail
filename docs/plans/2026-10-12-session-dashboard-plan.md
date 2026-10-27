@@ -841,7 +841,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
       - 마지막 데이터 반영 시각: Sync와 같은 관심사라 `FilterBar`에서 `AppHeader`의 Sync 버튼 옆으로 옮겼다. 좁은 화면에서는 숨긴다.
       - `ModelShare`: 모델이 한두 개에 몰려 패널을 채우지 못해, 패널 대신 헤드라인 아래 한 줄(글자색 막대 + 비율)로 줄였다.
       - `TopSessions`·`ProjectTokens`: 섹션 제목 아래에 결론 한 문장을 두고, 행마다 기간 전체 대비 비율과 1위 대비 막대를 붙였다. Top 세션 요약은 1위 세션 하나만 말한다. 세션별 합계는 복사된 호출을 세션마다 세서 여러 세션을 더하면 중복 제거된 전체를 넘을 수 있다(코드 리뷰 2026-10-27).
-      - 세션 지도(`SessionMap`): 메인 맨 위에 날짜 × 시간대 지도를 두었다. 지금은 세션 목록 API를 끝까지 받아 시작 시각에 점을 찍는 임시 구현이고, Task 9a에서 활동 집계로 바꾼다.
+      - 세션 지도(`SessionMap`): 메인 맨 위에 날짜 × 시간대 지도를 두었다. 처음에는 세션 목록 API를 끝까지 받아 시작 시각에 점을 찍었고, Task 9a에서 `overview.activity` 기반 시간 칸으로 바꿨다.
     - `/`는 빌드 때 정적 셸로 미리 렌더링되므로 `APP_MODE`·`autoSyncOnLoad`는 빌드 시점 값이 들어간다. 배포(Task 13)에서는 빌드 환경 변수에 `APP_MODE=demo`가 있어야 한다.
   - `ProjectTokens`: 가로 막대(두 열), `ModelShare`: 헤드라인 아래 한 줄(구현 메모 참고), `TopSessions`: 순위·비율·막대가 붙은 링크 목록 → `/sessions/[id]`
   - 빈 상태(`sessionCount === 0`): 프로젝트가 하나라도 있으면(`/api/filters`의 `projects`) "선택한 기간·필터에 해당하는 데이터가 없습니다."(코드 리뷰 2026-10-27, demo 스냅샷에는 `ImportedFile`이 없을 수 있어 `lastImportedAt`으로 판단하지 않는다). DB가 비었으면 local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
@@ -902,8 +902,8 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
   - 동점: 같은 칸에서 토큰이 같은 두 세션이면 `topSessionId`는 id 오름차순 첫 세션이고, `activitySessions`에 그 세션 제목이 있다
   - 빈 결과: 데이터가 없으면 `activity`, `activitySessions` 모두 `[]`
 - [x] **Step 4: 구현** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: PASS
-- [ ] **Step 5: 확인과 커밋** — Run: `pnpm typecheck && pnpm test` / Expected: PASS. `"feat: 시간대별 활동 집계"`
-- [ ] **Step 6: 화면 연결 (Claude)** — `SessionMap`이 세션 목록 API를 이어 받던 부분을 지우고 `overview.activity`로 "날짜 × 24시간" 칸을 `calls` 진하기로 칠한다. 칸 hover 시 그 시간대의 호출 수, 토큰, 대표 세션 제목(`activitySessions`)을 보여준다. 커밋은 대시보드 디자인 개선 커밋과 묶거나 따로 한다.
+- [x] **Step 5: 확인과 커밋** — Run: `pnpm typecheck && pnpm test` / Expected: PASS. `"feat: 시간대별 활동 집계"`
+- [x] **Step 6: 화면 연결 (Claude)** — `SessionMap`이 세션 목록 API를 이어 받던 부분을 지우고 `overview.activity`로 "날짜 × 24시간" 칸을 `calls` 진하기로 칠한다. 칸 hover 시 그 시간대의 호출 수, 토큰, 대표 세션 제목(`activitySessions`)을 보여준다. 커밋은 대시보드 디자인 개선 커밋과 묶거나 따로 한다.
 
 ---
 

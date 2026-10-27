@@ -86,7 +86,8 @@ function DashboardBody() {
         map={
           <SessionMap
             days={data.daily.map((day) => day.date)}
-            filters={values}
+            activity={data.activity}
+            sessions={data.activitySessions}
           />
         }
       />
