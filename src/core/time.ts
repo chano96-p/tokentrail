@@ -1,9 +1,10 @@
 // import·집계에서 API 호출마다 불리므로 타임존별 formatter를 재사용한다.
-const formatters = new Map<string, Intl.DateTimeFormat>();
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+const hourFormatters = new Map<string, Intl.DateTimeFormat>();
 
 // 'YYYY-MM-DD'
 export function toDateKey(d: Date, timeZone: string): string {
-  let formatter = formatters.get(timeZone);
+  let formatter = dateFormatters.get(timeZone);
   if (!formatter) {
     formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone,
@@ -11,9 +12,23 @@ export function toDateKey(d: Date, timeZone: string): string {
       month: "2-digit",
       day: "2-digit",
     });
-    formatters.set(timeZone, formatter);
+    dateFormatters.set(timeZone, formatter);
   }
   return formatter.format(d);
+}
+
+// 0~23. h23이 없으면 엔진에 따라 자정이 24로 나온다.
+export function toHourInZone(d: Date, timeZone: string): number {
+  let formatter = hourFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    });
+    hourFormatters.set(timeZone, formatter);
+  }
+  return Number(formatter.format(d));
 }
 
 // 양 끝 포함

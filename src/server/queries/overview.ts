@@ -1,6 +1,6 @@
 import type { DashboardConfig } from "@/core/config";
 import { estimateCostUsd, totalTokens } from "@/core/pricing";
-import { dateKeysBetween, toDateKey } from "@/core/time";
+import { dateKeysBetween, toDateKey, toHourInZone } from "@/core/time";
 import type { PrismaClient } from "@prisma/client";
 
 export type OverviewParams = {
@@ -16,6 +16,14 @@ export type DailyTokens = {
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+};
+
+export type ActivityCell = {
+  date: string;
+  hour: number;
+  calls: number;
+  tokens: number;
+  topSessionId: string;
 };
 
 export type Overview = {
@@ -34,6 +42,16 @@ export type Overview = {
     projectName: string;
     totalTokens: number;
   }[];
+  activity: ActivityCell[];
+  activitySessions: { id: string; title: string | null; projectName: string }[];
+};
+
+type ActivityBucket = {
+  date: string;
+  hour: number;
+  calls: number;
+  tokens: number;
+  sessionTotals: Map<string, number>;
 };
 
 // 합계 내림차순, 같으면 키 오름차순. 동점이 상위 N 경계에 걸려도 결과가 매번 같도록 보조 키를 둔다.
@@ -113,6 +131,7 @@ export async function getOverview(
   const modelTotals = new Map<string, number>();
   const unpricedModels = new Set<string>();
   const activeDates = new Set<string>();
+  const activityBuckets = new Map<string, ActivityBucket>();
   let total = 0;
   let estimatedCostUsd = 0;
 
@@ -130,6 +149,23 @@ export async function getOverview(
       day.cacheWriteTokens += row.cacheWrite5mTokens + row.cacheWrite1hTokens;
     }
 
+    const hour = toHourInZone(row.timestamp, config.timezone);
+    const bucketKey = `${dateKey}|${hour}`;
+    let bucket = activityBuckets.get(bucketKey);
+    if (!bucket) {
+      bucket = {
+        date: dateKey,
+        hour,
+        calls: 0,
+        tokens: 0,
+        sessionTotals: new Map(),
+      };
+      activityBuckets.set(bucketKey, bucket);
+    }
+    bucket.calls += 1;
+    bucket.tokens += rowTotal;
+    addTo(bucket.sessionTotals, row.sessionId, rowTotal);
+
     const cost = estimateCostUsd(row, row.model, config.pricing);
     if (cost === null) unpricedModels.add(row.model);
     else estimatedCostUsd += cost;
@@ -140,6 +176,17 @@ export async function getOverview(
 
   const topProjects = topEntries(projectTotals, 8);
   const topSessions = topEntries(sessionTotals, 5);
+  const activity: ActivityCell[] = [...activityBuckets.values()]
+    .sort((a, b) =>
+      a.date === b.date ? a.hour - b.hour : a.date < b.date ? -1 : 1,
+    )
+    .map(({ sessionTotals: cellSessionTotals, ...cell }) => ({
+      ...cell,
+      topSessionId: topEntries(cellSessionTotals, 1)[0][0],
+    }));
+  const activitySessionIds = [
+    ...new Set(activity.map((cell) => cell.topSessionId)),
+  ];
   // 이름·제목은 행마다 가져오지 않고 화면에 나갈 상위 N개만 조회한다.
   const [projects, sessions] = await Promise.all([
     db.project.findMany({
@@ -147,7 +194,9 @@ export async function getOverview(
       select: { id: true, name: true },
     }),
     db.session.findMany({
-      where: { id: { in: topSessions.map(([id]) => id) } },
+      where: {
+        id: { in: [...topSessions.map(([id]) => id), ...activitySessionIds] },
+      },
       select: { id: true, title: true, project: { select: { name: true } } },
     }),
   ]);
@@ -176,6 +225,12 @@ export async function getOverview(
       title: sessionById.get(id)?.title ?? null,
       projectName: sessionById.get(id)?.project.name ?? "",
       totalTokens,
+    })),
+    activity,
+    activitySessions: activitySessionIds.map((id) => ({
+      id,
+      title: sessionById.get(id)?.title ?? null,
+      projectName: sessionById.get(id)?.project.name ?? "",
     })),
   };
 }

@@ -333,3 +333,131 @@ test("cache write는 5m·1h를 합쳐 일별에 넣고, 비용은 각각의 단�
   expect(o.estimatedCostUsd).toBeCloseTo(3.75 + 6);
   expect(o.activeDays).toBe(2);
 });
+
+test("activity는 TZ 기준 날짜·시간 칸으로 나누고 date → hour 순으로 정렬한다", async () => {
+  await seed(db, [
+    {
+      id: "m2",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-12T14:30:00Z",
+      input: 20,
+    },
+    {
+      id: "m1",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-11T15:30:00Z",
+      input: 10,
+    },
+  ]);
+  const o = await getOverview(db, range, config);
+  expect(o.activity).toEqual([
+    { date: "2026-10-12", hour: 0, calls: 1, tokens: 10, topSessionId: "s1" },
+    { date: "2026-10-12", hour: 23, calls: 1, tokens: 20, topSessionId: "s1" },
+  ]);
+});
+
+test("activity는 세션 간 복사된 호출을 한 번만 센다", async () => {
+  await seed(db, [
+    {
+      id: "m1",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-12T01:00:00Z",
+      input: 100,
+    },
+    {
+      id: "m1",
+      session: "s2",
+      model: "claude-a",
+      at: "2026-10-12T01:00:00Z",
+      input: 100,
+    },
+  ]);
+  const o = await getOverview(db, range, config);
+  expect(o.activity).toEqual([
+    { date: "2026-10-12", hour: 10, calls: 1, tokens: 100, topSessionId: "s1" },
+  ]);
+});
+
+test("activity는 프로젝트 필터를 따른다", async () => {
+  await seed(db, [
+    {
+      id: "m1",
+      session: "s1",
+      project: "p1",
+      model: "claude-a",
+      at: "2026-10-12T01:00:00Z",
+      input: 10,
+    },
+    {
+      id: "m2",
+      session: "s2",
+      project: "p2",
+      model: "claude-a",
+      at: "2026-10-12T01:10:00Z",
+      input: 20,
+    },
+  ]);
+  const o = await getOverview(db, { ...range, projectId: "p1" }, config);
+  expect(o.activity).toEqual([
+    { date: "2026-10-12", hour: 10, calls: 1, tokens: 10, topSessionId: "s1" },
+  ]);
+});
+
+test("activity는 기간 전에 시작한 세션의 기간 안 호출만 포함한다", async () => {
+  await seed(db, [
+    {
+      id: "m1",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-11T03:00:00Z",
+      input: 10,
+    },
+    {
+      id: "m2",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-12T01:00:00Z",
+      input: 20,
+    },
+  ]);
+  const o = await getOverview(db, range, config);
+  expect(o.activity).toEqual([
+    { date: "2026-10-12", hour: 10, calls: 1, tokens: 20, topSessionId: "s1" },
+  ]);
+});
+
+test("activity의 topSessionId는 토큰이 같으면 id 오름차순이고 activitySessions에 세션 정보가 있다", async () => {
+  await seed(db, [
+    {
+      id: "m1",
+      session: "s2",
+      model: "claude-a",
+      at: "2026-10-12T01:00:00Z",
+      input: 10,
+    },
+    {
+      id: "m2",
+      session: "s1",
+      model: "claude-a",
+      at: "2026-10-12T01:30:00Z",
+      input: 10,
+    },
+  ]);
+  await db.session.update({ where: { id: "s1" }, data: { title: "첫 세션" } });
+  const o = await getOverview(db, range, config);
+  expect(o.activity).toEqual([
+    { date: "2026-10-12", hour: 10, calls: 2, tokens: 20, topSessionId: "s1" },
+  ]);
+  expect(o.activitySessions).toEqual([
+    { id: "s1", title: "첫 세션", projectName: "p1" },
+  ]);
+});
+
+test("activity는 데이터가 없으면 빈 배열", async () => {
+  const o = await getOverview(db, range, config);
+  expect(o.activity).toEqual([]);
+  expect(o.activitySessions).toEqual([]);
+});

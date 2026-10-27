@@ -3,6 +3,7 @@ import {
   endOfDayInZone,
   startOfDayInZone,
   toDateKey,
+  toHourInZone,
 } from "@/core/time";
 import { expect, test } from "vitest";
 
@@ -66,4 +67,10 @@ test("startOfDayInZone은 서머타임 전환일에도 현지 0시", () => {
   expect(startOfDayInZone("2026-04-05", "Australia/Sydney").toISOString()).toBe(
     "2026-04-04T13:00:00.000Z",
   );
+});
+
+test("toHourInZone은 지정 TZ 기준 0~23시, 자정은 0", () => {
+  expect(toHourInZone(new Date("2026-10-11T15:30:00Z"), "Asia/Seoul")).toBe(0);
+  expect(toHourInZone(new Date("2026-10-11T14:59:59Z"), "Asia/Seoul")).toBe(23);
+  expect(toHourInZone(new Date("2026-10-11T15:30:00Z"), "UTC")).toBe(15);
 });

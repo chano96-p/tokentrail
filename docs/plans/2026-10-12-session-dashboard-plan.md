@@ -892,16 +892,16 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 - `toHourInZone`은 `toDateKey`처럼 타임존별 `Intl.DateTimeFormat`을 재사용하고 `hourCycle: 'h23'`을 지정한다. 지정하지 않으면 엔진에 따라 자정이 `24`로 나올 수 있다.
 - 응답 크기: 30일이면 최대 720칸이고 호출이 있는 칸만 보내 대부분 훨씬 적다.
 
-- [ ] **Step 1: `toHourInZone` 실패 테스트** — `2026-10-11T15:30:00Z`는 Asia/Seoul에서 `0`, `2026-10-11T14:59:59Z`는 `23`
-- [ ] **Step 2: `toHourInZone` 구현과 통과 확인** — Run: `pnpm vitest run tests/core/time.test.ts` / Expected: PASS
-- [ ] **Step 3: `activity` 실패 테스트** (`tests/server/overview.test.ts`)
+- [x] **Step 1: `toHourInZone` 실패 테스트** — `2026-10-11T15:30:00Z`는 Asia/Seoul에서 `0`, `2026-10-11T14:59:59Z`는 `23`
+- [x] **Step 2: `toHourInZone` 구현과 통과 확인** — Run: `pnpm vitest run tests/core/time.test.ts` / Expected: PASS (사용자 요청으로 Claude가 구현)
+- [x] **Step 3: `activity` 실패 테스트** (`tests/server/overview.test.ts`)
   - 타임존 경계: `2026-10-11T15:30:00Z` 호출이 `{ date: '2026-10-12', hour: 0 }` 칸에 들어간다
   - 중복 제거: 같은 messageId가 두 세션에 있어도 그 칸의 `calls`는 1
   - 프로젝트 필터: 다른 프로젝트의 호출이 칸에서 빠진다
   - 기간 경계: 기간 전에 시작해 기간 안에 이어진 세션의 기간 안 호출은 포함되고 기간 밖 호출은 빠진다
   - 동점: 같은 칸에서 토큰이 같은 두 세션이면 `topSessionId`는 id 오름차순 첫 세션이고, `activitySessions`에 그 세션 제목이 있다
   - 빈 결과: 데이터가 없으면 `activity`, `activitySessions` 모두 `[]`
-- [ ] **Step 4: 구현** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: PASS
+- [x] **Step 4: 구현** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: PASS
 - [ ] **Step 5: 확인과 커밋** — Run: `pnpm typecheck && pnpm test` / Expected: PASS. `"feat: 시간대별 활동 집계"`
 - [ ] **Step 6: 화면 연결 (Claude)** — `SessionMap`이 세션 목록 API를 이어 받던 부분을 지우고 `overview.activity`로 "날짜 × 24시간" 칸을 `calls` 진하기로 칠한다. 칸 hover 시 그 시간대의 호출 수, 토큰, 대표 세션 제목(`activitySessions`)을 보여준다. 커밋은 대시보드 디자인 개선 커밋과 묶거나 따로 한다.
 
