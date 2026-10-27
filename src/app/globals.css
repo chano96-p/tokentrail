@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
+/*
+ * 토큰 4종 색은 dataviz 검증 스크립트를 통과한 값이다. 설계서 원래 색은 cache read 초록의 채도가 낮아 회색처럼 보이고
+ * (chroma 미달), 다크 모드는 명도 범위를 벗어났다. 누적 순서(cache read → cache write → input → output)에서
+ * 맞닿는 색끼리 색각 이상에서도 구분되도록 골랐다.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: #f6f8f8;
+  --surface: #ffffff;
+  --fg: #172224;
+  --muted: #5a6b6e;
+  --line: #d8e0e1;
+  --accent: #0f6e6a;
+  --accent-soft: #e0efee;
+  --warn: #a8680f;
+  --tok-in: #2a78d6;
+  --tok-out: #eb6834;
+  --tok-cr: #1baf7a;
+  --tok-cw: #eda100;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #0f1617;
+    --surface: #162022;
+    --fg: #e3ebec;
+    --muted: #93a5a8;
+    --line: #2a393b;
+    --accent: #5cc4bc;
+    --accent-soft: #1b3433;
+    --warn: #e0a84a;
+    --tok-in: #3987e5;
+    --tok-out: #d95926;
+    --tok-cr: #199e70;
+    --tok-cw: #c98500;
+    color-scheme: dark;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-tok-in: var(--tok-in);
+  --color-tok-out: var(--tok-out);
+  --color-tok-cr: var(--tok-cr);
+  --color-tok-cw: var(--tok-cw);
+  --font-sans:
+    var(--font-plex-sans-kr), -apple-system, "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
 }

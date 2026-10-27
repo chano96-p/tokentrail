@@ -816,18 +816,24 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
   function useAppMode(): 'local' | 'demo';
   ```
 
-- [ ] **Step 1: `Providers`.** `QueryClient`(staleTime 30초), sonner `<Toaster />`, 모드 context. `mode === 'local' && autoSync`면 마운트 시 1회 `POST /api/sync` 후 `invalidateQueries()`.
-- [ ] **Step 2: 루트 layout**은 서버에서 `getAppMode()`와 `loadConfig().autoSyncOnLoad`를 읽어 `Providers`에 넘긴다.
-- [ ] **Step 3: `AppHeader`**(앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
+- [x] **Step 1: `Providers`.** `QueryClient`(staleTime 30초), sonner `<Toaster />`, 모드 context. `mode === 'local' && autoSync`면 마운트 시 1회 `POST /api/sync` 후 `invalidateQueries()`.
+- [x] **Step 2: 루트 layout**은 서버에서 `getAppMode()`와 `loadConfig().autoSyncOnLoad`를 읽어 `Providers`에 넘긴다.
+- [x] **Step 3: `AppHeader`**(앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
 - Sync 주의(Task 8 리뷰): 서버에는 동시 실행 가드가 없다. 두 sync가 겹치면 같은 offset을 읽어 기본키 충돌(500)이 날 수 있으므로 `SyncButton`은 `isPending` 동안 비활성화하고, 자동 sync가 도는 중에도 같은 mutation 상태를 보게 한다. 처리되지 않은 예외는 Next 기본 500(JSON 아님)이라 실패 토스트는 응답 본문이 JSON이 아닐 때도 메시지를 만들어야 한다.
-- [ ] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`), "마지막 데이터 반영 {상대 시각}". 값은 `useUrlFilters`.
-- [ ] **Step 5: 대시보드 위젯.** 토큰 4종 색은 spec 아티팩트와 같게 Tailwind 테마 변수로 정의(`--tok-in`, `--tok-out`, `--tok-cr`, `--tok-cw`).
+- [x] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`), "마지막 데이터 반영 {상대 시각}". 값은 `useUrlFilters`.
+- [x] **Step 5: 대시보드 위젯.** 토큰 4종 색은 spec 아티팩트와 같게 Tailwind 테마 변수로 정의(`--tok-in`, `--tok-out`, `--tok-cr`, `--tok-cw`).
   - `KpiCards`: 총 토큰, 세션 수, 활동일, API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
   - `DailyTokensChart`: Recharts `BarChart` 누적 4종, 범례
-  - `ProjectTokens`: 가로 막대, `ModelShare`: 도넛, `TopSessions`: 링크 목록 → `/sessions/[id]`
-  - 빈 상태(`sessionCount === 0`): local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
-  - 로딩은 스켈레톤, 에러는 "데이터를 불러오지 못했습니다" + 다시 시도 버튼(`refetch`)
-- [ ] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치
+  - 구현 메모(2026-10-27):
+    - 토큰 색: 설계서 색은 dataviz 검증에서 cache read 초록의 채도 미달(회색처럼 보임), 다크 모드 명도 범위 이탈로 실패해 검증을 통과한 값으로 바꿨다. input 파랑, output 주황, cache read 청록, cache write 노랑. 누적 순서는 cache read → cache write → input → output(맞닿는 색끼리 색각 이상에서도 구분).
+    - `ModelShare`는 도넛 대신 가로 막대(비율 %와 토큰 수를 직접 표기). 모델마다 색을 새로 붙이면 토큰 4종 색과 의미가 겹치고, 조각이 많으면 각도로 비교하기 어렵다.
+    - 토큰이 0인 모델(`<synthetic>`)은 비율 막대와 "일부 모델 단가 없음" 표시에서 뺀다.
+    - sync 상태는 `useSync`/`useIsSyncing`(`mutationKey: ['sync']`)으로 버튼과 자동 sync가 공유한다.
+    - `/`는 빌드 때 정적 셸로 미리 렌더링되므로 `APP_MODE`·`autoSyncOnLoad`는 빌드 시점 값이 들어간다. 배포(Task 13)에서는 빌드 환경 변수에 `APP_MODE=demo`가 있어야 한다.
+  - `ProjectTokens`: 가로 막대, `ModelShare`: 가로 막대(구현 메모 참고), `TopSessions`: 링크 목록 → `/sessions/[id]`
+  - 빈 상태(`sessionCount === 0`): 프로젝트가 하나라도 있으면(`/api/filters`의 `projects`) "선택한 기간·필터에 해당하는 데이터가 없습니다."(코드 리뷰 2026-10-27, demo 스냅샷에는 `ImportedFile`이 없을 수 있어 `lastImportedAt`으로 판단하지 않는다). DB가 비었으면 local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
+  - 로딩은 스켈레톤, 에러는 "데이터를 불러오지 못했습니다" + 다시 시도 버튼(`refetch`). 이미 보이던 데이터가 있으면 다시 불러오기가 실패해도 화면을 유지하고 안내 한 줄만 붙인다.
+- [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치
 - [ ] **Step 7: Commit** — `"feat: 앱 셸과 사용량 대시보드"`
 
 **2주차 완료 기준:** Step 6 통과.
