@@ -72,13 +72,11 @@ export function EventRow({
 
   return (
     <li
-      className={
-        isSubagent ? "ml-4 border-l-2 border-accent/50 pl-3 sm:ml-7" : ""
-      }
+      className={isSubagent ? "ml-4 border-l-2 border-line pl-3 sm:ml-7" : ""}
     >
       <div
         className={`grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-2 rounded-md px-2 py-1.5 text-sm ${
-          event.kind === "user" && !isSubagent ? "bg-accent-soft" : ""
+          event.kind === "user" && !isSubagent ? "bg-fill" : ""
         }`}
       >
         <span className="font-mono text-[11px] text-muted">
@@ -86,7 +84,7 @@ export function EventRow({
         </span>
         <div className="min-w-0">
           {isSubagent && (
-            <span className="mr-1.5 font-mono text-[11px] text-accent">
+            <span className="mr-1.5 font-mono text-[11px] text-fg">
               [agent {event.agentId!.slice(0, 6)}]
             </span>
           )}
@@ -104,7 +102,7 @@ export function EventRow({
               type="button"
               aria-expanded={rawOpen}
               onClick={() => setRawOpen((open) => !open)}
-              className="rounded px-1 text-muted hover:text-accent aria-expanded:text-accent"
+              className="rounded px-1 text-muted hover:text-fg aria-expanded:text-fg"
             >
               원본
             </button>

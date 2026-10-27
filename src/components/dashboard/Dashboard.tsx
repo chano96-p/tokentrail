@@ -7,30 +7,48 @@ import {
   StaleNotice,
 } from "@/components/StatusMessages";
 import { api, queryKeys } from "@/lib/api";
+import { formatPercent } from "@/lib/format";
 import { useUrlFilters } from "@/lib/useUrlFilters";
+import type { Overview } from "@/server/queries/overview";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { DailyTokensChart } from "./DailyTokensChart";
-import { KpiCards } from "./KpiCards";
-import { ModelShare } from "./ModelShare";
+import { Headline } from "./Headline";
 import { Panel } from "./Panel";
 import { ProjectTokens } from "./ProjectTokens";
+import { SessionMap } from "./SessionMap";
 import { TopSessions } from "./TopSessions";
 
 export function DashboardSkeleton() {
   return (
-    <div className="grid animate-pulse gap-4" aria-busy="true">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-20 rounded-lg bg-line/60" />
-        ))}
+    <div className="grid animate-pulse gap-10" aria-busy="true">
+      <div className="grid gap-4 py-4 sm:py-8">
+        <div className="h-4 w-48 rounded bg-line/60" />
+        <div className="h-20 max-w-2xl rounded bg-line/60" />
+        <div className="h-5 w-80 rounded bg-line/60" />
       </div>
-      <div className="h-72 rounded-lg bg-line/60" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="h-48 rounded-lg bg-line/60" />
-        <div className="h-48 rounded-lg bg-line/60" />
+      <div className="grid gap-10 lg:grid-cols-3">
+        <div className="h-96 rounded-lg bg-line/60 lg:col-span-2" />
+        <div className="h-96 rounded-lg bg-line/60" />
       </div>
     </div>
   );
+}
+
+function share(part: number, whole: number): string {
+  return formatPercent(part / Math.max(whole, 1));
+}
+
+function topSessionsSummary(data: Overview): string | undefined {
+  const sessions = data.topSessions;
+  if (sessions.length === 0) return undefined;
+  // 세션별 합계는 복사된 호출을 세션마다 세서, 여러 세션을 더하면 중복 제거된 전체를 넘을 수 있다.
+  return `가장 많이 쓴 세션 하나가 전체 토큰의 ${share(sessions[0].totalTokens, data.totalTokens)}를 썼습니다.`;
+}
+
+function projectsSummary(data: Overview): string | undefined {
+  const top = data.byProject[0];
+  if (!top) return undefined;
+  return `가장 많이 쓴 프로젝트는 ${top.name}, 전체의 ${share(top.totalTokens, data.totalTokens)}입니다.`;
 }
 
 function DashboardBody() {
@@ -60,23 +78,28 @@ function DashboardBody() {
 
   return (
     <div
-      className={`grid gap-4 transition-opacity ${overview.isPlaceholderData ? "opacity-60" : ""}`}
+      className={`grid gap-10 transition-opacity ${overview.isPlaceholderData ? "opacity-60" : ""}`}
     >
       {overview.isError && <StaleNotice />}
-      <KpiCards overview={data} />
-      <Panel title="일별 토큰">
-        <DailyTokensChart daily={data.daily} />
-      </Panel>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Panel title="프로젝트별 토큰">
-          <ProjectTokens byProject={data.byProject} />
+      <Headline
+        overview={data}
+        map={
+          <SessionMap
+            days={data.daily.map((day) => day.date)}
+            filters={values}
+          />
+        }
+      />
+      <div className="grid gap-10 lg:grid-cols-3">
+        <Panel title="일별 토큰" className="lg:col-span-2">
+          <DailyTokensChart daily={data.daily} />
         </Panel>
-        <Panel title="모델별 토큰 비율">
-          <ModelShare byModel={data.byModel} />
+        <Panel title="토큰을 많이 쓴 세션" summary={topSessionsSummary(data)}>
+          <TopSessions sessions={data.topSessions} total={data.totalTokens} />
         </Panel>
       </div>
-      <Panel title="토큰을 많이 쓴 세션">
-        <TopSessions sessions={data.topSessions} />
+      <Panel title="프로젝트별 토큰" summary={projectsSummary(data)}>
+        <ProjectTokens byProject={data.byProject} total={data.totalTokens} />
       </Panel>
     </div>
   );

@@ -13,10 +13,8 @@ export function EmptyState({ hasAnyData }: { hasAnyData: boolean }) {
     message = (
       <>
         아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서{" "}
-        <code className="rounded bg-accent-soft px-1 font-mono">
-          pnpm run sync
-        </code>
-        를 실행하세요.
+        <code className="rounded bg-fill px-1 font-mono">pnpm run sync</code>를
+        실행하세요.
       </>
     );
   } else {
@@ -43,7 +41,7 @@ export function LoadError({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-md border border-accent px-3 py-1 text-accent hover:bg-accent-soft"
+        className="mt-4 h-8 rounded-md bg-fg px-3 text-bg hover:opacity-85"
       >
         다시 시도
       </button>

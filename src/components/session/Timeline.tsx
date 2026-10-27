@@ -30,7 +30,7 @@ function HideToggles({
               else next.delete(kind);
               onChange(next);
             }}
-            className="accent-(--accent)"
+            className="accent-(--fg)"
           />
           {kind}
         </label>

@@ -36,7 +36,7 @@ export function SessionDetailView({ id }: { id: string }) {
         <p>세션을 찾을 수 없습니다</p>
         <Link
           href="/sessions"
-          className="mt-3 inline-block text-accent hover:underline"
+          className="mt-3 inline-block underline underline-offset-2"
         >
           세션 목록으로
         </Link>

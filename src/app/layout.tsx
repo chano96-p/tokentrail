@@ -1,14 +1,17 @@
 import { loadConfig } from "@/core/config";
 import { getAppMode } from "@/server/mode";
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_KR, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./providers";
 
-// 한글 글리프는 subsets에 없어 미리 불러오지 않고, 필요한 글자 범위만 그때 받는다.
-const plexSansKr = IBM_Plex_Sans_KR({
-  variable: "--font-plex-sans-kr",
-  weight: ["400", "500", "700"],
+// Pretendard는 Google Fonts에 없어 npm 패키지의 가변 폰트 파일을 직접 불러온다.
+// 한글 전체가 든 파일(약 2MB)이라 preload하지 않는다.
+const pretendard = localFont({
+  src: "../../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
+  variable: "--font-pretendard",
+  weight: "45 920",
   preload: false,
 });
 
@@ -27,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ko"
-      className={`${plexSansKr.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${pretendard.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers

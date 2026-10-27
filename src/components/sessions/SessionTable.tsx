@@ -39,7 +39,7 @@ function SortToggle() {
     <div
       role="group"
       aria-label="정렬"
-      className="inline-flex overflow-hidden rounded-md border border-line text-sm"
+      className="inline-flex h-8 gap-0.5 rounded-lg bg-fill p-0.5 text-sm"
     >
       {SORT_OPTIONS.map(({ value, label }) => (
         <button
@@ -47,7 +47,7 @@ function SortToggle() {
           type="button"
           aria-pressed={active === value}
           onClick={() => set({ sort: value === "recent" ? null : value })}
-          className="px-3 py-1 text-muted aria-pressed:bg-accent aria-pressed:text-surface"
+          className="rounded-md px-3 text-muted not-aria-pressed:hover:text-fg aria-pressed:bg-surface aria-pressed:text-fg aria-pressed:shadow-sm"
         >
           {label}
         </button>
@@ -60,7 +60,7 @@ function SessionRow({ session }: { session: SessionListItem }) {
   const timeZone = useTimeZone();
   return (
     // 행 전체를 누를 수 있게 제목 링크의 클릭 영역을 행 크기로 넓힌다(링크는 하나만 둬서 탭 순서를 단순하게).
-    <tr className="relative border-t border-line hover:bg-accent-soft/60">
+    <tr className="relative border-t border-line hover:bg-fill/60">
       {/* 표 셀의 max-width는 브라우저마다 다르게 처리돼, 너비 제한과 말줄임은 셀 안쪽 요소에 건다. */}
       <td className="px-3 py-2">
         <Link
@@ -76,16 +76,16 @@ function SessionRow({ session }: { session: SessionListItem }) {
       <td className="px-3 py-2 font-mono text-xs text-muted">
         <div className="max-w-40 truncate">{session.gitBranch ?? "–"}</div>
       </td>
-      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap tabular-nums">
+      <td className="px-3 py-2 text-xs whitespace-nowrap tabular-nums">
         {formatDateTime(session.startedAt, timeZone)}
       </td>
-      <td className="px-3 py-2 text-right font-mono text-xs whitespace-nowrap tabular-nums">
+      <td className="px-3 py-2 text-right text-xs whitespace-nowrap tabular-nums">
         {formatDuration(session.startedAt, session.endedAt)}
       </td>
-      <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
+      <td className="px-3 py-2 text-right text-xs tabular-nums">
         {formatTokens(session.totalTokens)}
       </td>
-      <td className="px-3 py-2 text-right font-mono text-xs tabular-nums">
+      <td className="px-3 py-2 text-right text-xs tabular-nums">
         {session.subagentCount > 0 ? session.subagentCount : "–"}
       </td>
     </tr>

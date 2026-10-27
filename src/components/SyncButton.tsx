@@ -11,7 +11,7 @@ export function SyncButton() {
       type="button"
       onClick={() => mutate()}
       disabled={syncing}
-      className="rounded-md border border-accent px-3 py-1 text-sm font-medium text-accent transition-colors hover:bg-accent-soft disabled:cursor-wait disabled:opacity-60"
+      className="h-8 rounded-md bg-fg px-3 text-sm font-medium text-bg transition-opacity hover:opacity-85 disabled:cursor-wait disabled:opacity-60"
     >
       {syncing ? "Sync 중…" : "Sync"}
     </button>

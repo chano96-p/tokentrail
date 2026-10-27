@@ -50,7 +50,7 @@ export function SessionHeader({
               style={{ background: part.color }}
             />
             {part.label}
-            <span className="font-mono text-fg tabular-nums">
+            <span className="text-fg tabular-nums">
               {formatTokens(session[part.key])}
             </span>
           </li>

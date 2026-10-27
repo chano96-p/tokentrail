@@ -13,7 +13,7 @@
 ## 실행 방식: C (하이브리드)
 
 - **Task 1~8 (core, 쿼리, API):** 사용자가 직접 구현한다. Claude는 코드를 대신 쓰지 않고 태스크 요약, 요청 시 힌트, 디버깅, 리뷰만 한다. 리뷰는 코드 수정 없이 파일·라인 단위로 지적한다.
-- **Task 9~13 (화면, 데모 스크립트, 배포):** Claude가 이 계획대로 구현하고 사용자가 리뷰한다.
+- **Task 9~13 (화면, 데모 스크립트, 배포):** Claude가 이 계획대로 구현하고 사용자가 리뷰한다. 예외로 Task 9a의 쿼리·시간 헬퍼(Step 1~5)는 사용자가 구현한다.
 - "Task N 시작" → Claude는 해당 태스크의 목표, 인터페이스, 주의점을 짧게 정리한다. "리뷰해줘" → 현재 diff를 이 계획과 비교해 리뷰한다.
 - Step이 끝날 때마다 `docs/plans/2026-10-12-session-dashboard-plan.md`의 해당 체크박스를 `- [x]`로 바꾼다. 커밋은 테스트가 통과하는 의미 단위마다 한다(실패 테스트만 있는 상태는 커밋하지 않는다). 각 태스크의 마지막 "Commit" Step은 남은 변경을 커밋하는 단계로 본다.
 - 새 세션이나 다른 컴퓨터에서 시작할 때: repo의 `CLAUDE.md`(실행 방식), `docs/plans/2026-10-12-session-dashboard-plan.md`(계획 원문), `docs/specs/2026-10-12-session-dashboard-design.md`(설계서)를 읽는다. repo 문서가 기준이고, 아티팩트(계획 https://claude.ai/artifact/FZ1RXJbHEc71FVKZhie6wn, 설계서 https://claude.ai/artifact/9wDtE4U2m15RfTZosxuzC2)는 공유용 사본이다.
@@ -54,7 +54,7 @@ tokentrail/
   prisma/migrations/
   src/core/config.ts               DashboardConfig 타입, loadConfig()
   src/core/pricing.ts              estimateCostUsd()
-  src/core/time.ts                 toDateKey(), dateKeysBetween()
+  src/core/time.ts                 toDateKey(), dateKeysBetween(), toHourInZone()
   src/core/parser/types.ts         내부 표준 타입
   src/core/parser/parseLine.ts     JSONL 한 줄 → ParsedLine
   src/core/parser/summarize.ts     summarizeToolInput(), truncate()
@@ -607,6 +607,8 @@ test('세션 도중 cwd가 바뀌어도 첫 프로젝트에 남는다', async ()
     byProject: { projectId: string; name: string; totalTokens: number }[];  // 내림차순 상위 8
     byModel: { model: string; totalTokens: number }[];      // 내림차순
     topSessions: { id: string; title: string | null; projectName: string; totalTokens: number }[]; // 범위 내 토큰 기준 상위 5
+    activity: ActivityCell[];                               // Task 9a에서 추가
+    activitySessions: { id: string; title: string | null; projectName: string }[]; // Task 9a에서 추가
   };
   function getOverview(db: PrismaClient, params: OverviewParams, config: DashboardConfig): Promise<Overview>;
   type FilterOptions = { projects: { id: string; name: string }[]; models: string[]; lastImportedAt: string | null };
@@ -801,7 +803,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 ### Task 9: 앱 셸과 대시보드 화면
 
 **Files:**
-- Create: `src/app/providers.tsx`, `src/lib/api.ts`, `src/lib/useUrlFilters.ts`, `src/components/AppHeader.tsx`, `src/components/SyncButton.tsx`, `src/components/DemoBanner.tsx`, `src/components/FilterBar.tsx`, `src/components/dashboard/KpiCards.tsx`, `src/components/dashboard/DailyTokensChart.tsx`, `src/components/dashboard/ProjectTokens.tsx`, `src/components/dashboard/ModelShare.tsx`, `src/components/dashboard/TopSessions.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/page.tsx`
+- Create: `src/app/providers.tsx`, `src/lib/api.ts`, `src/lib/useUrlFilters.ts`, `src/components/AppHeader.tsx`, `src/components/SyncButton.tsx`, `src/components/DemoBanner.tsx`, `src/components/FilterBar.tsx`, `src/components/dashboard/Headline.tsx`(디자인 개편 전 `KpiCards.tsx`), `src/components/dashboard/SessionMap.tsx`, `src/components/dashboard/Panel.tsx`, `src/components/dashboard/DailyTokensChart.tsx`, `src/components/dashboard/ProjectTokens.tsx`, `src/components/dashboard/ModelShare.tsx`, `src/components/dashboard/TopSessions.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/page.tsx`
 - Modify: `src/app/layout.tsx`
 - Test: 수동 확인
 
@@ -821,23 +823,87 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 - [x] **Step 2: 루트 layout**은 서버에서 `getAppMode()`와 `loadConfig().autoSyncOnLoad`를 읽어 `Providers`에 넘긴다.
 - [x] **Step 3: `AppHeader`**(앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
 - Sync 주의(Task 8 리뷰): 서버에는 동시 실행 가드가 없다. 두 sync가 겹치면 같은 offset을 읽어 기본키 충돌(500)이 날 수 있으므로 `SyncButton`은 `isPending` 동안 비활성화하고, 자동 sync가 도는 중에도 같은 mutation 상태를 보게 한다. 처리되지 않은 예외는 Next 기본 500(JSON 아님)이라 실패 토스트는 응답 본문이 JSON이 아닐 때도 메시지를 만들어야 한다.
-- [x] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`), "마지막 데이터 반영 {상대 시각}". 값은 `useUrlFilters`.
+- [x] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`). 값은 `useUrlFilters`. "마지막 데이터 반영 {상대 시각}"은 디자인 개편 때 `AppHeader`의 Sync 버튼 옆으로 옮겼다(구현 메모 참고).
 - [x] **Step 5: 대시보드 위젯.** 토큰 4종 색은 spec 아티팩트와 같게 Tailwind 테마 변수로 정의(`--tok-in`, `--tok-out`, `--tok-cr`, `--tok-cw`).
-  - `KpiCards`: 총 토큰, 세션 수, 활동일, API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
-  - `DailyTokensChart`: Recharts `BarChart` 누적 4종, 범례
+  - `Headline`(디자인 개편 전 `KpiCards`): 세션 수, 신규 처리 토큰(cache write + input + output), cache read 토큰, 활동일, API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
+  - `DailyTokensChart`: Recharts `BarChart` 두 개(위: 신규 처리 3종 누적, 아래: cache read), 같은 날짜 축·툴팁 동기화, 범례
   - 구현 메모(2026-10-27):
-    - 토큰 색: 설계서 색은 dataviz 검증에서 cache read 초록의 채도 미달(회색처럼 보임), 다크 모드 명도 범위 이탈로 실패해 검증을 통과한 값으로 바꿨다. input 파랑, output 주황, cache read 청록, cache write 노랑. 누적 순서는 cache read → cache write → input → output(맞닿는 색끼리 색각 이상에서도 구분).
+    - 토큰 색: 설계서 색은 dataviz 검증에서 cache read 초록의 채도 미달(회색처럼 보임), 다크 모드 명도 범위 이탈로 실패해 검증을 통과한 값으로 바꿨다. 디자인 개편 때 한 번 더 바꿨다(아래).
     - `ModelShare`는 도넛 대신 가로 막대(비율 %와 토큰 수를 직접 표기). 모델마다 색을 새로 붙이면 토큰 4종 색과 의미가 겹치고, 조각이 많으면 각도로 비교하기 어렵다.
     - 토큰이 0인 모델(`<synthetic>`)은 비율 막대와 "일부 모델 단가 없음" 표시에서 뺀다.
     - sync 상태는 `useSync`/`useIsSyncing`(`mutationKey: ['sync']`)으로 버튼과 자동 sync가 공유한다.
+    - 디자인 개편(2026-10-27). 처음 구현이 템플릿처럼 보이고 데이터의 실제 모양과 맞지 않아 메인 화면을 다시 짰다.
+      - KPI 카드 → 문장형 헤드라인(`Headline`): cache read가 하루 토큰의 약 97%라 "총 토큰" 하나로는 실제로 새로 처리한 양이 보이지 않는다. 신규 처리분과 cache read를 나눠 한 문장으로 말하고, API 환산과 구독료 대비 배수는 다음 줄에 둔다. 총 토큰은 화면에 직접 나오지 않는다.
+      - 일별 차트 분리: 한 막대에 4종을 쌓으면 input·output이 보이지 않아, 같은 날짜 축을 쓰는 두 차트(위 신규 3종, 아래 cache read)로 나눴다. 각 차트는 y축이 하나라 이중 축이 아니다.
+      - 색 원칙: 화면 틀(배경·글자·버튼·선택 상태)은 무채색, 색은 토큰 4종에만 쓴다. `--accent`·`--accent-soft`를 지우고 `--fill`(무채색 바탕)을 추가했다.
+      - 토큰 색 재배정: 채도 하한(chroma 0.1) 때문에 채도를 낮출 수 없어, 면적이 큰 cache read·cache write에 aqua·blue, 면적이 작은 input·output에 yellow·red를 배정했다(라이트 `#1baf7a`·`#2a78d6`·`#eda100`·`#e34948`, 다크 `#199e70`·`#3987e5`·`#c98500`·`#e34948`). dataviz 검증을 모든 쌍 기준으로 통과했고, output↔cache read가 색각 이상 ΔE 6~7 경계라 누적 조각 사이에 2px 배경색 간격을 둔다.
+      - 폰트: IBM Plex Sans KR → Pretendard(`pretendard` 패키지의 가변 woff2를 `next/font/local`로). 파일이 약 2MB라 preload하지 않는다. 데모 배포(Task 13) 전에 글자 범위별 파일로 바꿀지 정한다.
+      - 마지막 데이터 반영 시각: Sync와 같은 관심사라 `FilterBar`에서 `AppHeader`의 Sync 버튼 옆으로 옮겼다. 좁은 화면에서는 숨긴다.
+      - `ModelShare`: 모델이 한두 개에 몰려 패널을 채우지 못해, 패널 대신 헤드라인 아래 한 줄(글자색 막대 + 비율)로 줄였다.
+      - `TopSessions`·`ProjectTokens`: 섹션 제목 아래에 결론 한 문장을 두고, 행마다 기간 전체 대비 비율과 1위 대비 막대를 붙였다. Top 세션 요약은 1위 세션 하나만 말한다. 세션별 합계는 복사된 호출을 세션마다 세서 여러 세션을 더하면 중복 제거된 전체를 넘을 수 있다(코드 리뷰 2026-10-27).
+      - 세션 지도(`SessionMap`): 메인 맨 위에 날짜 × 시간대 지도를 두었다. 지금은 세션 목록 API를 끝까지 받아 시작 시각에 점을 찍는 임시 구현이고, Task 9a에서 활동 집계로 바꾼다.
     - `/`는 빌드 때 정적 셸로 미리 렌더링되므로 `APP_MODE`·`autoSyncOnLoad`는 빌드 시점 값이 들어간다. 배포(Task 13)에서는 빌드 환경 변수에 `APP_MODE=demo`가 있어야 한다.
-  - `ProjectTokens`: 가로 막대, `ModelShare`: 가로 막대(구현 메모 참고), `TopSessions`: 링크 목록 → `/sessions/[id]`
+  - `ProjectTokens`: 가로 막대(두 열), `ModelShare`: 헤드라인 아래 한 줄(구현 메모 참고), `TopSessions`: 순위·비율·막대가 붙은 링크 목록 → `/sessions/[id]`
   - 빈 상태(`sessionCount === 0`): 프로젝트가 하나라도 있으면(`/api/filters`의 `projects`) "선택한 기간·필터에 해당하는 데이터가 없습니다."(코드 리뷰 2026-10-27, demo 스냅샷에는 `ImportedFile`이 없을 수 있어 `lastImportedAt`으로 판단하지 않는다). DB가 비었으면 local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
   - 로딩은 스켈레톤, 에러는 "데이터를 불러오지 못했습니다" + 다시 시도 버튼(`refetch`). 이미 보이던 데이터가 있으면 다시 불러오기가 실패해도 화면을 유지하고 안내 한 줄만 붙인다.
-- [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치
+- [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치(디자인 개편 후에는 헤드라인의 신규 처리 토큰 + cache read 토큰의 합과 비교)
 - [x] **Step 7: Commit** — `"feat: 앱 셸과 사용량 대시보드"`
 
 **2주차 완료 기준:** Step 6 통과.
+
+---
+
+### Task 9a: 시간대별 활동 집계 (2026-10-27 추가)
+
+대시보드 메인의 세션 지도(`SessionMap`)를 "날짜 × 24시간" 칸으로 그리기 위한 집계다. 지금은 세션 목록 API를 끝까지 받아 시작 시각에 점을 찍어서, 며칠에 걸쳐 이어 쓴 세션이 시작 시각 한 점이나 수백 시간짜리 막대로 보인다. 실제 API 호출 시각으로 칸을 채우면 이어 쓴 세션도 활동한 시간대마다 찍히고, 기간 전에 시작한 세션도 기간 안의 호출만큼 들어간다.
+
+**실행 방식:** Step 1~5(시간 헬퍼, 쿼리, 테스트)는 Task 1~8처럼 사용자가 구현하고 Claude는 힌트·리뷰만 한다. Step 6(화면 연결)은 Claude가 구현한다.
+
+**Files:**
+- Modify: `src/core/time.ts`, `src/server/queries/overview.ts`, `src/components/dashboard/SessionMap.tsx`
+- Test: `tests/core/time.test.ts`, `tests/server/overview.test.ts`
+
+**Interfaces:**
+- Consumes: `getOverview`의 `uniqueRows`(Task 6), `toDateKey`(Task 2)
+- Produces:
+  ```ts
+  function toHourInZone(d: Date, timeZone: string): number; // 0~23
+  type ActivityCell = {
+    date: string;         // 'YYYY-MM-DD' (config.timezone 기준)
+    hour: number;         // 0~23
+    calls: number;        // API 호출 수 (messageId 중복 제거 후)
+    tokens: number;       // totalTokens 합
+    topSessionId: string; // 이 칸에서 토큰을 가장 많이 쓴 세션
+  };
+  type Overview = {
+    // ...Task 6 필드
+    activity: ActivityCell[]; // 호출이 있는 칸만, date → hour 오름차순
+    activitySessions: { id: string; title: string | null; projectName: string }[]; // topSessionId들의 세션 정보
+  };
+  ```
+
+설계:
+- 새 API 경로를 만들지 않고 `Overview`에 붙인다. 기간·프로젝트·모델 필터와 `messageId` 중복 제거가 메인 화면의 다른 숫자와 자동으로 같아지고, 요청 수도 늘지 않는다.
+- `uniqueRows` 반복문 안에서 `${dateKey}|${hour}` 키로 `calls += 1`, `tokens += rowTotal`을 누적한다. 칸마다 세션별 토큰 합도 같이 모아 최댓값 세션을 `topSessionId`로 고른다. 값이 같으면 sessionId 오름차순(`topEntries`와 같은 규칙).
+- 대표 행 기준이라 복사된 호출의 `topSessionId` 후보는 sessionId 사전순 첫 세션이다(`byProject` 귀속과 같은 규칙).
+- 서브에이전트 호출(`agentId`가 있는 행)도 실제 활동이라 거르지 않는다.
+- `activitySessions`는 `topSessions`의 제목을 가져오는 `session.findMany`에 id를 합쳐 한 번에 조회한다.
+- 화면의 칸 진하기는 `calls` 기준이다. 토큰은 cache read가 대부분이라 긴 대화 한 번이 짧은 작업 여러 번보다 진하게 나와 "얼마나 일했는지"가 아니라 "컨텍스트가 얼마나 길었는지"를 보여주게 된다. `tokens`는 hover 정보로 쓴다.
+- `toHourInZone`은 `toDateKey`처럼 타임존별 `Intl.DateTimeFormat`을 재사용하고 `hourCycle: 'h23'`을 지정한다. 지정하지 않으면 엔진에 따라 자정이 `24`로 나올 수 있다.
+- 응답 크기: 30일이면 최대 720칸이고 호출이 있는 칸만 보내 대부분 훨씬 적다.
+
+- [ ] **Step 1: `toHourInZone` 실패 테스트** — `2026-10-11T15:30:00Z`는 Asia/Seoul에서 `0`, `2026-10-11T14:59:59Z`는 `23`
+- [ ] **Step 2: `toHourInZone` 구현과 통과 확인** — Run: `pnpm vitest run tests/core/time.test.ts` / Expected: PASS
+- [ ] **Step 3: `activity` 실패 테스트** (`tests/server/overview.test.ts`)
+  - 타임존 경계: `2026-10-11T15:30:00Z` 호출이 `{ date: '2026-10-12', hour: 0 }` 칸에 들어간다
+  - 중복 제거: 같은 messageId가 두 세션에 있어도 그 칸의 `calls`는 1
+  - 프로젝트 필터: 다른 프로젝트의 호출이 칸에서 빠진다
+  - 기간 경계: 기간 전에 시작해 기간 안에 이어진 세션의 기간 안 호출은 포함되고 기간 밖 호출은 빠진다
+  - 동점: 같은 칸에서 토큰이 같은 두 세션이면 `topSessionId`는 id 오름차순 첫 세션이고, `activitySessions`에 그 세션 제목이 있다
+  - 빈 결과: 데이터가 없으면 `activity`, `activitySessions` 모두 `[]`
+- [ ] **Step 4: 구현** — Run: `pnpm vitest run tests/server/overview.test.ts` / Expected: PASS
+- [ ] **Step 5: 확인과 커밋** — Run: `pnpm typecheck && pnpm test` / Expected: PASS. `"feat: 시간대별 활동 집계"`
+- [ ] **Step 6: 화면 연결 (Claude)** — `SessionMap`이 세션 목록 API를 이어 받던 부분을 지우고 `overview.activity`로 "날짜 × 24시간" 칸을 `calls` 진하기로 칠한다. 칸 hover 시 그 시간대의 호출 수, 토큰, 대표 세션 제목(`activitySessions`)을 보여준다. 커밋은 대시보드 디자인 개선 커밋과 묶거나 따로 한다.
 
 ---
 

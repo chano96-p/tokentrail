@@ -1,39 +1,39 @@
 @import "tailwindcss";
 
 /*
- * 토큰 4종 색은 dataviz 검증 스크립트를 통과한 값이다. 설계서 원래 색은 cache read 초록의 채도가 낮아 회색처럼 보이고
- * (chroma 미달), 다크 모드는 명도 범위를 벗어났다. 누적 순서(cache read → cache write → input → output)에서
- * 맞닿는 색끼리 색각 이상에서도 구분되도록 골랐다.
+ * 화면 틀(배경·글자·선택 상태)은 무채색만 쓰고, 색은 토큰 4종에만 쓴다. 색이 보이면 곧 토큰 종류라는 뜻이 되도록.
+ *
+ * 토큰 4종 색은 dataviz 검증 스크립트를 모든 쌍 기준으로 통과한 값이다. 채도 하한(chroma 0.1) 때문에 채도를 낮출 수는
+ * 없어서, 면적이 큰 cache read·cache write에 차분한 aqua·blue를, 면적이 작은 input·output에 yellow·red를 배정했다.
+ * output↔cache read는 색각 이상에서 ΔE 6~7 경계라, 누적 막대 조각 사이에 배경색 간격을 둔다.
  */
 :root {
-  --bg: #f6f8f8;
+  --bg: #f4f5f6;
   --surface: #ffffff;
-  --fg: #172224;
-  --muted: #5a6b6e;
-  --line: #d8e0e1;
-  --accent: #0f6e6a;
-  --accent-soft: #e0efee;
+  --fg: #17181b;
+  --muted: #6b6e76;
+  --line: #e4e5e8;
+  --fill: #e9eaed;
   --warn: #a8680f;
-  --tok-in: #2a78d6;
-  --tok-out: #eb6834;
   --tok-cr: #1baf7a;
-  --tok-cw: #eda100;
+  --tok-cw: #2a78d6;
+  --tok-in: #eda100;
+  --tok-out: #e34948;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1617;
-    --surface: #162022;
-    --fg: #e3ebec;
-    --muted: #93a5a8;
-    --line: #2a393b;
-    --accent: #5cc4bc;
-    --accent-soft: #1b3433;
+    --bg: #18191c;
+    --surface: #2c2e33;
+    --fg: #ecedef;
+    --muted: #9a9da5;
+    --line: #3a3d43;
+    --fill: #222327;
     --warn: #e0a84a;
-    --tok-in: #3987e5;
-    --tok-out: #d95926;
     --tok-cr: #199e70;
-    --tok-cw: #c98500;
+    --tok-cw: #3987e5;
+    --tok-in: #c98500;
+    --tok-out: #e34948;
     color-scheme: dark;
   }
 }
@@ -44,15 +44,14 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
+  --color-fill: var(--fill);
   --color-warn: var(--warn);
   --color-tok-in: var(--tok-in);
   --color-tok-out: var(--tok-out);
   --color-tok-cr: var(--tok-cr);
   --color-tok-cw: var(--tok-cw);
   --font-sans:
-    var(--font-plex-sans-kr), -apple-system, "Apple SD Gothic Neo",
+    var(--font-pretendard), -apple-system, "Apple SD Gothic Neo",
     "Malgun Gothic", sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 }
@@ -61,4 +60,5 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
 }
