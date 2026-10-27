@@ -812,8 +812,9 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
   const queryKeys = { overview: (p: Record<string,string>) => ['overview', p], filters: ['filters'],
     sessions: (p: Record<string,string>) => ['sessions', p], session: (id: string) => ['session', id] } as const;
   function useUrlFilters(): { values: Record<string, string>; set: (patch: Record<string, string | null>) => void }; // router.replace, 스크롤 유지
-  function Providers(props: { mode: 'local' | 'demo'; autoSync: boolean; children: React.ReactNode }): JSX.Element;
+  function Providers(props: { mode: 'local' | 'demo'; autoSync: boolean; timeZone: string; children: React.ReactNode }): JSX.Element; // timeZone은 Task 10에서 추가
   function useAppMode(): 'local' | 'demo';
+  function useTimeZone(): string;
   ```
 
 - [x] **Step 1: `Providers`.** `QueryClient`(staleTime 30초), sonner `<Toaster />`, 모드 context. `mode === 'local' && autoSync`면 마운트 시 1회 `POST /api/sync` 후 `invalidateQueries()`.
@@ -834,7 +835,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
   - 빈 상태(`sessionCount === 0`): 프로젝트가 하나라도 있으면(`/api/filters`의 `projects`) "선택한 기간·필터에 해당하는 데이터가 없습니다."(코드 리뷰 2026-10-27, demo 스냅샷에는 `ImportedFile`이 없을 수 있어 `lastImportedAt`으로 판단하지 않는다). DB가 비었으면 local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
   - 로딩은 스켈레톤, 에러는 "데이터를 불러오지 못했습니다" + 다시 시도 버튼(`refetch`). 이미 보이던 데이터가 있으면 다시 불러오기가 실패해도 화면을 유지하고 안내 한 줄만 붙인다.
 - [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치
-- [ ] **Step 7: Commit** — `"feat: 앱 셸과 사용량 대시보드"`
+- [x] **Step 7: Commit** — `"feat: 앱 셸과 사용량 대시보드"`
 
 **2주차 완료 기준:** Step 6 통과.
 
@@ -851,9 +852,15 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 
 - 필터·정렬이 바뀌면 커서를 버리고 첫 페이지부터 다시 읽는다(코드 리뷰 2026-10-22). 이전 커서 행이 새 필터에서 빠져 있으면 `skip: 1`이 정상 행을 건너뛸 수 있다. 필터·정렬 값을 `queryKey`에 넣으면 된다.
 
-- [ ] **Step 1: 구현.** `useInfiniteQuery`(`getNextPageParam = last.nextCursor`), `placeholderData: keepPreviousData`. 컬럼: 제목(없으면 "제목 없음"), 프로젝트, 브랜치, 시작 시각(`timezone` 기준 `MM.DD HH:mm`), 소요 시간(`1h 05m`), 토큰(`1.2M` 축약), 서브에이전트 수. 정렬 토글 최신순/토큰순(`sort` URL 파라미터). 행 클릭 → 상세. 하단 "더 보기" 버튼.
-- [ ] **Step 2: 수동 확인** — Expected: 필터 변경 중 이전 목록이 유지되다 교체됨, 더 보기로 중복 없이 이어짐, 토큰순 정렬 동작
-- [ ] **Step 3: Commit** — `"feat: 세션 목록 화면"`
+- [x] **Step 1: 구현.** `useInfiniteQuery`(`getNextPageParam = last.nextCursor`), `placeholderData: keepPreviousData`. 컬럼: 제목(없으면 "제목 없음"), 프로젝트, 브랜치, 시작 시각(`timezone` 기준 `MM.DD HH:mm`), 소요 시간(`1h 05m`), 토큰(`1.2M` 축약), 서브에이전트 수. 정렬 토글 최신순/토큰순(`sort` URL 파라미터). 행 클릭 → 상세. 하단 "더 보기" 버튼.
+- 구현 메모(2026-10-27):
+  - 시작 시각을 설정 파일 timezone으로 보이려고 `Providers`에 `timeZone`을 추가하고 `useTimeZone()`으로 읽는다(Task 9 인터페이스 확장).
+  - 빈 상태·불러오기 실패·이전 결과 유지 안내는 대시보드와 같은 컴포넌트(`src/components/StatusMessages.tsx`)를 쓴다.
+  - 행 전체를 누를 수 있게 제목 링크의 클릭 영역을 행 크기로 넓혔다(링크는 행마다 하나).
+  - 최신순은 기본값이라 URL에 `sort`를 남기지 않는다.
+  - 코드 리뷰(2026-10-27): "더 보기" 실패는 이전 결과 유지 안내(`StaleNotice`) 대신 버튼 위에 따로 안내한다. URL에 `cursor`가 있어도 첫 페이지 요청에는 넣지 않는다(커서는 `pageParam`으로만). 표 셀의 `max-width`는 브라우저마다 다르게 처리돼 너비 제한·말줄임은 셀 안쪽 요소에 건다.
+- [x] **Step 2: 수동 확인** — Expected: 필터 변경 중 이전 목록이 유지되다 교체됨, 더 보기로 중복 없이 이어짐, 토큰순 정렬 동작
+- [x] **Step 3: Commit** — `"feat: 세션 목록 화면"`
 
 ---
 

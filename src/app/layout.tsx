@@ -23,13 +23,18 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const config = loadConfig();
   return (
     <html
       lang="ko"
       className={`${plexSansKr.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
-        <Providers mode={getAppMode()} autoSync={loadConfig().autoSyncOnLoad}>
+        <Providers
+          mode={getAppMode()}
+          autoSync={config.autoSyncOnLoad}
+          timeZone={config.timezone}
+        >
           {children}
         </Providers>
       </body>
