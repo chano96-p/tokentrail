@@ -111,9 +111,9 @@ export function SessionMap({
   const labelEvery = Math.max(1, Math.ceil(days.length / 7));
 
   return (
-    <figure className="grid gap-3">
-      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2">
-        <div className="relative h-72 text-[11px] text-muted tabular-nums sm:h-96">
+    <figure className="flex flex-1 flex-col gap-3">
+      <div className="grid min-h-72 flex-1 grid-cols-[2.25rem_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-x-2 sm:min-h-96">
+        <div className="relative text-[11px] text-muted tabular-nums">
           {HOUR_MARKS.map((hour) => (
             <span
               key={hour}
@@ -125,7 +125,7 @@ export function SessionMap({
           ))}
         </div>
         <div
-          className="relative grid h-72 sm:h-96"
+          className="relative grid"
           style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
           onMouseLeave={() => setActiveKey(null)}
         >

@@ -803,7 +803,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 ### Task 9: 앱 셸과 대시보드 화면
 
 **Files:**
-- Create: `src/app/providers.tsx`, `src/lib/api.ts`, `src/lib/useUrlFilters.ts`, `src/components/AppHeader.tsx`, `src/components/SyncButton.tsx`, `src/components/DemoBanner.tsx`, `src/components/FilterBar.tsx`, `src/components/dashboard/Headline.tsx`(디자인 개편 전 `KpiCards.tsx`), `src/components/dashboard/SessionMap.tsx`, `src/components/dashboard/Panel.tsx`, `src/components/dashboard/DailyTokensChart.tsx`, `src/components/dashboard/ProjectTokens.tsx`, `src/components/dashboard/ModelShare.tsx`, `src/components/dashboard/TopSessions.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/page.tsx`
+- Create: `src/app/providers.tsx`, `src/lib/api.ts`, `src/lib/useUrlFilters.ts`, `src/components/AppShell.tsx`(SaaS형 개편 전 `AppHeader.tsx`), `src/components/icons.tsx`, `src/components/SyncButton.tsx`, `src/components/DemoBanner.tsx`, `src/components/FilterBar.tsx`, `src/components/dashboard/KpiCards.tsx`(디자인 개편 때 `Headline.tsx`였다가 SaaS형 개편 때 되돌림), `src/components/dashboard/SessionMap.tsx`, `src/components/dashboard/RecentSessions.tsx`, `src/components/dashboard/Panel.tsx`, `src/components/dashboard/DailyTokensChart.tsx`, `src/components/dashboard/ProjectTokens.tsx`, `src/components/dashboard/ModelShare.tsx`, `src/components/dashboard/TopSessions.tsx`, `src/app/(dashboard)/layout.tsx`, `src/app/(dashboard)/page.tsx`
 - Modify: `src/app/layout.tsx`
 - Test: 수동 확인
 
@@ -821,11 +821,11 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 
 - [x] **Step 1: `Providers`.** `QueryClient`(staleTime 30초), sonner `<Toaster />`, 모드 context. `mode === 'local' && autoSync`면 마운트 시 1회 `POST /api/sync` 후 `invalidateQueries()`.
 - [x] **Step 2: 루트 layout**은 서버에서 `getAppMode()`와 `loadConfig().autoSyncOnLoad`를 읽어 `Providers`에 넘긴다.
-- [x] **Step 3: `AppHeader`**(앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
+- [x] **Step 3: 앱 셸**(SaaS형 개편 전 `AppHeader`, 현재 `AppShell`: 앱 이름, 대시보드·세션 링크, `SyncButton`), demo면 `DemoBanner`("실제 사용 데이터 · 본문 일부 마스킹")를 보여주고 Sync 버튼은 숨긴다. `SyncButton`은 `useMutation` → 성공 시 `invalidateQueries()`와 토스트 "새 이벤트 {newEvents}개, API 호출 {newApiCalls}개를 가져왔습니다", 실패 시 토스트 "Sync에 실패했습니다: {message}".
 - Sync 주의(Task 8 리뷰): 서버에는 동시 실행 가드가 없다. 두 sync가 겹치면 같은 offset을 읽어 기본키 충돌(500)이 날 수 있으므로 `SyncButton`은 `isPending` 동안 비활성화하고, 자동 sync가 도는 중에도 같은 mutation 상태를 보게 한다. 처리되지 않은 예외는 Next 기본 500(JSON 아님)이라 실패 토스트는 응답 본문이 JSON이 아닐 때도 메시지를 만들어야 한다.
-- [x] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`). 값은 `useUrlFilters`. "마지막 데이터 반영 {상대 시각}"은 디자인 개편 때 `AppHeader`의 Sync 버튼 옆으로 옮겼다(구현 메모 참고).
+- [x] **Step 4: `FilterBar`**: 기간 세그먼트(7일/30일/직접 선택 → from·to date input), 프로젝트·모델 select(`/api/filters`). 값은 `useUrlFilters`. "마지막 데이터 반영 {상대 시각}"은 디자인 개편 때 상단 바의 Sync 버튼 옆으로 옮겼다(구현 메모 참고).
 - [x] **Step 5: 대시보드 위젯.** 토큰 4종 색은 spec 아티팩트와 같게 Tailwind 테마 변수로 정의(`--tok-in`, `--tok-out`, `--tok-cr`, `--tok-cw`).
-  - `Headline`(디자인 개편 전 `KpiCards`): 세션 수, 신규 처리 토큰(cache write + input + output), cache read 토큰, 활동일, API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
+  - `KpiCards`(SaaS형 개편, 2026-10-29): 카드 4장. 새로 처리한 토큰(cache write + input + output, 강조 카드), 캐시에서 읽은 토큰, API 환산, 세션 수(아래에 활동일). 카드마다 직전 같은 길이 기간 대비 증감. API 환산(`≈ $x`, 아래에 `구독료 대비 {estimatedCostUsd ÷ (subscriptionMonthlyUsd × 기간 일수 ÷ 30)}배`, `unpricedModels`가 있으면 "일부 모델 단가 없음")
   - `DailyTokensChart`: Recharts `BarChart` 두 개(위: 신규 처리 3종 누적, 아래: cache read), 같은 날짜 축·툴팁 동기화, 범례
   - 구현 메모(2026-10-27):
     - 토큰 색: 설계서 색은 dataviz 검증에서 cache read 초록의 채도 미달(회색처럼 보임), 다크 모드 명도 범위 이탈로 실패해 검증을 통과한 값으로 바꿨다. 디자인 개편 때 한 번 더 바꿨다(아래).
@@ -842,11 +842,18 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
       - `ModelShare`: 모델이 한두 개에 몰려 패널을 채우지 못해, 패널 대신 헤드라인 아래 한 줄(글자색 막대 + 비율)로 줄였다.
       - `TopSessions`·`ProjectTokens`: 섹션 제목 아래에 결론 한 문장을 두고, 행마다 기간 전체 대비 비율과 1위 대비 막대를 붙였다. Top 세션 요약은 1위 세션 하나만 말한다. 세션별 합계는 복사된 호출을 세션마다 세서 여러 세션을 더하면 중복 제거된 전체를 넘을 수 있다(코드 리뷰 2026-10-27).
       - 세션 지도(`SessionMap`): 메인 맨 위에 날짜 × 시간대 지도를 두었다. 처음에는 세션 목록 API를 끝까지 받아 시작 시각에 점을 찍었고, Task 9a에서 `overview.activity` 기반 시간 칸으로 바꿨다.
+    - SaaS형 개편(2026-10-29). 문장형 헤드라인과 테두리 없는 구성이 훑어보기 어렵고 "AI가 만든 리포트"처럼 읽힌다는 피드백으로, SaaS 대시보드 틀에 위 차트·지도를 넣는 하이브리드로 바꿨다.
+      - 앱 셸(`AppShell`): 넓은 화면은 왼쪽 사이드바(브랜드, 아이콘 메뉴, 아래쪽에 반영 시각과 Sync)와 본문 위 페이지 제목. 데이터 상태는 화면마다 같아서 사이드바에 둔다. 세션 상세는 세션 제목이 곧 페이지 제목이라 공통 제목을 그리지 않는다. `lg` 미만은 사이드바 대신 상단 바에 브랜드·메뉴·Sync를 한 줄로 둔다.
+      - 카드 높이: 같은 줄 카드는 높이가 맞춰지고, 남는 높이는 내용이 받는다(`Panel`). 시간대별 활동 지도는 최소 높이(18rem, sm 이상 24rem)를 두고 옆 카드에 맞춰 늘어난다. 세션 목록의 자체 제목은 상단 바와 겹쳐 뺐다. 아이콘은 라이브러리 없이 `icons.tsx`에 직접 그렸다.
+      - KPI 카드 복귀: 헤드라인 문장 대신 카드 4장. 첫 카드(새로 처리한 토큰)만 글자색 바탕으로 뒤집어 위계를 준다. 강조색도 무채색(글자색)이라 "색은 토큰 4종에만" 원칙은 유지한다.
+      - 증감: 직전 같은 길이 기간을 `/api/overview?from&to`로 한 번 더 받아 계산한다(서버 변경 없음). 토큰 증가가 좋고 나쁨이 아니라서 상태 색 없이 화살표만 붙인다. 현재 기간은 오늘이 진행 중이라 마지막 날이 덜 찬 상태로 비교된다.
+      - 배치: KPI 줄 → 일별 토큰(2/3) + 많이 쓴 세션(1/3) → 시간대별 활동(2/3) + 프로젝트·모델(1/3) → 최근 세션 표 5행. 섹션은 모두 카드(`Panel`)이고 목록 카드에는 "전체 보기" 링크를 둔다.
+      - 섹션 결론 문장(Top 세션·프로젝트 요약)은 헤드라인과 같은 말투가 반복돼 뺐다. `ModelShare`는 프로젝트 카드 아래쪽에 프로젝트와 같은 막대 목록으로 둔다.
     - `/`는 빌드 때 정적 셸로 미리 렌더링되므로 `APP_MODE`·`autoSyncOnLoad`는 빌드 시점 값이 들어간다. 배포(Task 13)에서는 빌드 환경 변수에 `APP_MODE=demo`가 있어야 한다.
-  - `ProjectTokens`: 가로 막대(두 열), `ModelShare`: 헤드라인 아래 한 줄(구현 메모 참고), `TopSessions`: 순위·비율·막대가 붙은 링크 목록 → `/sessions/[id]`
+  - `ProjectTokens`·`ModelShare`: 한 카드 안의 가로 막대 목록, `TopSessions`: 순위·비율·막대가 붙은 링크 목록 → `/sessions/[id]`, `RecentSessions`: 최근 세션 5행 표(`/api/sessions?limit=5`)
   - 빈 상태(`sessionCount === 0`): 프로젝트가 하나라도 있으면(`/api/filters`의 `projects`) "선택한 기간·필터에 해당하는 데이터가 없습니다."(코드 리뷰 2026-10-27, demo 스냅샷에는 `ImportedFile`이 없을 수 있어 `lastImportedAt`으로 판단하지 않는다). DB가 비었으면 local은 "아직 가져온 세션이 없습니다. 상단 Sync를 누르거나 터미널에서 pnpm run sync를 실행하세요.", demo는 "표시할 데모 데이터가 없습니다."
   - 로딩은 스켈레톤, 에러는 "데이터를 불러오지 못했습니다" + 다시 시도 버튼(`refetch`). 이미 보이던 데이터가 있으면 다시 불러오기가 실패해도 화면을 유지하고 안내 한 줄만 붙인다.
-- [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치(디자인 개편 후에는 헤드라인의 신규 처리 토큰 + cache read 토큰의 합과 비교)
+- [x] **Step 6: 수동 확인** — Run: `pnpm dev`, `http://localhost:3000` / Expected: 7일·30일 전환 시 URL과 차트가 바뀜, 새로고침해도 필터 유지, Sync 후 토스트·숫자 갱신, `APP_MODE=demo pnpm dev`에서 배너 표시·Sync 숨김. 같은 기간을 `sqlite3`로 합산한 총 토큰과 KPI가 일치(개편 후에는 KPI의 새로 처리한 토큰 + 캐시에서 읽은 토큰의 합과 비교)
 - [x] **Step 7: Commit** — `"feat: 앱 셸과 사용량 대시보드"`
 
 **2주차 완료 기준:** Step 6 통과.

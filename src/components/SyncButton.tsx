@@ -2,7 +2,7 @@
 
 import { useIsSyncing, useSync } from "@/lib/useSync";
 
-export function SyncButton() {
+export function SyncButton({ className = "" }: { className?: string }) {
   const { mutate } = useSync();
   const syncing = useIsSyncing();
 
@@ -11,7 +11,7 @@ export function SyncButton() {
       type="button"
       onClick={() => mutate()}
       disabled={syncing}
-      className="h-8 rounded-md bg-fg px-3 text-sm font-medium text-bg transition-opacity hover:opacity-85 disabled:cursor-wait disabled:opacity-60"
+      className={`h-8 rounded-md bg-fg px-3 text-sm font-medium text-bg transition-opacity hover:opacity-85 disabled:cursor-wait disabled:opacity-60 ${className}`}
     >
       {syncing ? "Sync 중…" : "Sync"}
     </button>

@@ -12,7 +12,6 @@ export function ProjectTokens({
   if (byProject.length === 0) {
     return <p className="text-sm text-muted">이 기간에는 데이터가 없습니다.</p>;
   }
-  // columns는 열을 위에서 아래로 채워, 두 열로 나눠도 순위 순서대로 읽힌다.
   return (
     <RankedBars
       rows={byProject.map((p) => ({
@@ -22,7 +21,6 @@ export function ProjectTokens({
       }))}
       formatValue={formatTokens}
       total={total}
-      className="md:columns-2"
     />
   );
 }

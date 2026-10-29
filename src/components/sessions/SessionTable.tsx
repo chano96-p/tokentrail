@@ -114,8 +114,8 @@ export function SessionTable() {
   });
 
   const header = (
-    <div className="flex items-center justify-between gap-3">
-      <h1 className="text-lg font-semibold">세션</h1>
+    // 페이지 제목은 레이아웃의 PageHeading이 그린다.
+    <div className="flex items-center justify-end gap-3">
       <SortToggle />
     </div>
   );
