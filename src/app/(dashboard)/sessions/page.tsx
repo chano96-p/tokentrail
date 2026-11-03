@@ -7,7 +7,7 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-export const metadata: Metadata = { title: "세션 · tokentrail" };
+export const metadata: Metadata = { title: "세션 · 씀씀이" };
 
 // FilterBar와 SessionTable은 URL 필터를 useSearchParams로 읽어 Suspense 경계 안에 둔다.
 export default function SessionsPage() {

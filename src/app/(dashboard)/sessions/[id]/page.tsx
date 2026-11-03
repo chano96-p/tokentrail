@@ -5,7 +5,7 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-export const metadata: Metadata = { title: "세션 상세 · tokentrail" };
+export const metadata: Metadata = { title: "세션 상세 · 씀씀이" };
 
 type SessionParams = PageProps<"/sessions/[id]">["params"];
 

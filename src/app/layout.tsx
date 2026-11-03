@@ -21,8 +21,10 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "tokentrail",
-  description: "Claude Code 세션 로그로 보는 토큰 사용량과 세션 타임라인",
+  // 링크 미리보기 이미지(opengraph-image)는 절대 URL이 필요해 데모 주소를 기준으로 둔다.
+  metadataBase: new URL("https://tokentrail-demo.vercel.app"),
+  title: "씀씀이",
+  description: "Claude Code 토큰 사용량 대시보드와 세션 타임라인",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

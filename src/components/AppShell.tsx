@@ -92,7 +92,7 @@ function LastImported({ className = "" }: { className?: string }) {
 function Brand() {
   return (
     <Link href="/" className="text-[17px] font-semibold tracking-tight">
-      tokentrail
+      씀씀이
     </Link>
   );
 }
