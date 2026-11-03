@@ -998,7 +998,7 @@ Route의 `params` 형태(Promise 여부)는 설치된 Next.js 버전의 Route Ha
 
 `buildSnapshot`: `demo.projects`(cwd)에 속한 프로젝트·세션·호출·이벤트만. `Project.cwd`와 `name`은 `aliases[cwd] ?? 'project-N'`. Session `title`·`gitBranch`, Event `preview`·`inputSummary`는 `redactText`(projectRoot = 그 세션 프로젝트의 원래 cwd). 숫자·모델·툴 이름·isError·timestamp는 그대로.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 ```ts
 const o = { homeDir: '/Users/me', username: 'me', projectRoot: '/Users/me/Sites/app' };
@@ -1029,10 +1029,10 @@ test('allowlist 프로젝트만, 별칭과 마스킹 적용, 숫자 보존', asy
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/anonymizer.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현**
-- [ ] **Step 4: `scripts/demo-export.ts`.** `buildSnapshot(getDb(), loadConfig().demo, { homeDir: os.homedir(), username: os.userInfo().username })`. 비어 있으면 "dashboard.config.ts의 demo.projects에 공개할 프로젝트 cwd를 추가하세요"를 출력하고 exit 1. 아니면 `demo-snapshot.json`에 쓰고 프로젝트·세션·이벤트 수 출력. `package.json`에 `"demo:export": "tsx --env-file=.env scripts/demo-export.ts"`.
-- [ ] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/anonymizer.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현**
+- [x] **Step 4: `scripts/demo-export.ts`.** `buildSnapshot(getDb(), loadConfig().demo, { homeDir: os.homedir(), username: os.userInfo().username })`. 비어 있으면 "dashboard.config.ts의 demo.projects에 공개할 프로젝트 cwd를 추가하세요"를 출력하고 exit 1. 아니면 `demo-snapshot.json`에 쓰고 프로젝트·세션·이벤트 수 출력. `package.json`에 `"demo:export": "tsx --env-file=.env scripts/demo-export.ts"`.
+- [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [ ] **Step 6: Commit** — `"feat: 데모용 익명화 스냅샷 export"`
 
 ---

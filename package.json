@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "postinstall": "prisma generate",
-    "sync": "tsx --env-file=.env scripts/sync.ts"
+    "sync": "tsx --env-file=.env scripts/sync.ts",
+    "demo:export": "tsx --env-file=.env scripts/demo-export.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",

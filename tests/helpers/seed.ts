@@ -157,3 +157,70 @@ export async function seedTimeline(
     })),
   });
 }
+
+export type SeedFullSessionOptions = {
+  cwd: string;
+  sessionId?: string; // 기본 "s1"
+  title?: string;
+  gitBranch?: string;
+  preview?: string;
+  inputSummary?: string;
+  input?: number;
+};
+
+// 익명화 테스트용. 프로젝트(cwd 지정)·세션·API 호출·이벤트를 하나씩 만든다.
+export async function seedFullSession(
+  db: PrismaClient,
+  {
+    cwd,
+    sessionId = "s1",
+    title,
+    gitBranch,
+    preview,
+    inputSummary,
+    input = 0,
+  }: SeedFullSessionOptions,
+): Promise<void> {
+  const sourceFile = await getSeedFile(db);
+  const project = await db.project.upsert({
+    where: { cwd },
+    create: { cwd, name: cwd.split("/").pop() ?? cwd },
+    update: {},
+  });
+  const at = new Date(SEED_TIMELINE_AT);
+
+  await db.session.create({
+    data: {
+      id: sessionId,
+      projectId: project.id,
+      title,
+      gitBranch,
+      startedAt: at,
+      endedAt: at,
+    },
+  });
+  await db.apiCall.create({
+    data: {
+      sessionId,
+      messageId: `${sessionId}-m1`,
+      sourceFileId: sourceFile.id,
+      model: "claude-a",
+      timestamp: at,
+      inputTokens: input,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWrite5mTokens: 0,
+      cacheWrite1hTokens: 0,
+    },
+  });
+  await db.timelineEvent.create({
+    data: {
+      ...ev(`${sessionId}-e1`, "assistant_text", "01:00", {
+        preview,
+        inputSummary,
+      }),
+      sessionId,
+      sourceFileId: sourceFile.id,
+    },
+  });
+}
