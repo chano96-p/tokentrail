@@ -1006,7 +1006,7 @@ test.each([
   ['key sk-ant-abcdefghijklmnop1234', 'key [REDACTED]'],
   ['token ghp_abcdefghijklmnopqrstuvwxyz', 'token [REDACTED]'],
   ['Authorization: Bearer eyJhbGciOi.abc', 'Authorization: [REDACTED]'],
-  ['mail pco@example.com', 'mail [REDACTED]'],
+  ['mail user@example.com', 'mail [REDACTED]'],
   ['Read /Users/me/Sites/app/src/a.ts', 'Read src/a.ts'],
   ['cd /Users/me/Desktop/other', 'cd ~/Desktop/other'],
   ['whoami → me', 'whoami → user'],
@@ -1074,8 +1074,9 @@ test('두 번 push해도 중복이 없다', async () => {
 - [x] **Step 6: Vercel 배포 (수동).** GitHub에 push → Vercel 프로젝트 연결 → env `APP_MODE=demo`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` → 배포. 빌드나 런타임에서 libsql 관련 오류가 나면 Turso 공식 Prisma 가이드(https://docs.turso.tech/sdk/ts/orm/prisma)의 서버리스 설정을 따른다.
   Expected: 배포 URL에서 배너 표시, Sync·원본 보기 없음, 대시보드·목록·상세가 스냅샷 데이터로 동작, `curl -XPOST <url>/api/sync` → 403
   - 구현 메모 (2026-11-03): 배포는 https://tokentrail-demo.vercel.app/ (함수 리전 icn1). 데모 데이터는 push 시점에 멈춰 있어 오늘 기준 "최근 7일"이 시간이 지나면 비므로, demo 모드에서는 `getReferenceNow`가 마지막 API 호출 시각을 기준 시각으로 쓴다(overview·sessions 라우트). 데모 배너에 "MM.DD 기준"을 표시한다. 배너 날짜도 같은 시각을 쓰도록 filters 응답에 `lastActivityAt`을 추가했다. 사용자 승인으로 Task 8 영역(라우트, filters 쿼리)을 Claude가 수정했다.
-- [ ] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음". 데모 갱신 절차에는 "`demo:push`는 테이블을 지운 뒤 다시 채우므로, 중간에 실패하면 데모가 일부만 채워진 상태로 남는다. 다시 실행하면 복구된다"를 적는다(2026-11-03 리뷰)
-- [ ] **Step 8: Commit** — `"feat: 데모 push, 배포 설정, README"`
+- [x] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음". 데모 갱신 절차에는 "`demo:push`는 테이블을 지운 뒤 다시 채우므로, 중간에 실패하면 데모가 일부만 채워진 상태로 남는다. 다시 실행하면 복구된다"를 적는다(2026-11-03 리뷰)
+- [x] **Step 8: Commit** — `"feat: 데모 push, 배포 설정, README"`
+  - 구현 메모 (2026-11-03): push·배포 설정은 앞선 커밋들에 들어가, 마지막 커밋은 README·스크린샷만 담아 `docs:`로 남겼다.
 
 **4주차 완료 기준:** Step 6 통과.
 

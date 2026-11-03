@@ -28,7 +28,7 @@ test.each([
   ["key sk-ant-abcdefghijklmnop1234", "key [REDACTED]"],
   ["token ghp_abcdefghijklmnopqrstuvwxyz", "token [REDACTED]"],
   ["Authorization: Bearer eyJhbGciOi.abc", "Authorization: [REDACTED]"],
-  ["mail pco@example.com", "mail [REDACTED]"],
+  ["mail user@example.com", "mail [REDACTED]"],
   ["Read /Users/me/Sites/app/src/a.ts", "Read src/a.ts"],
   ["cd /Users/me/Desktop/other", "cd ~/Desktop/other"],
   ["whoami → me", "whoami → user"],
