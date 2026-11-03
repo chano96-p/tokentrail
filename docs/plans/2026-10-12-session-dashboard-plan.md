@@ -1077,7 +1077,8 @@ test('두 번 push해도 중복이 없다', async () => {
 - [x] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음". 데모 갱신 절차에는 "`demo:push`는 테이블을 지운 뒤 다시 채우므로, 중간에 실패하면 데모가 일부만 채워진 상태로 남는다. 다시 실행하면 복구된다"를 적는다(2026-11-03 리뷰)
 - [x] **Step 8: Commit** — `"feat: 데모 push, 배포 설정, README"`
   - 구현 메모 (2026-11-03): push·배포 설정은 앞선 커밋들에 들어가, 마지막 커밋은 README·스크린샷만 담아 `docs:`로 남겼다.
-  - 구현 메모 (2026-11-03): 화면 이름을 `씀씀이`로 바꿨다(저장소 이름은 tokentrail 유지). 토큰 4색 막대로 `app/icon.svg`와 `app/opengraph-image.tsx`를 추가했고, 링크 미리보기 절대 URL을 위해 `metadataBase`를 데모 주소로 고정했다. 템플릿 기본 에셋(`public/*.svg`, `favicon.ico`)은 지웠다. README 스크린샷은 배포 반영 뒤 다시 찍는다.
+  - 구현 메모 (2026-11-03): 화면 이름을 `씀씀이`로 바꿨다(저장소 이름은 tokentrail 유지). 토큰 4색 막대로 `app/icon.svg`와 링크 미리보기 이미지를 추가했고, 링크 미리보기 절대 URL을 위해 `metadataBase`를 데모 주소로 고정했다. 템플릿 기본 에셋(`public/*.svg`, `favicon.ico`)은 지웠다. README 스크린샷은 배포 반영 뒤 다시 찍는다.
+  - 구현 메모 (2026-11-03): 미리보기 이미지를 처음엔 `opengraph-image.tsx`에서 Pretendard otf로 그렸는데, `node_modules/pretendard`가 pnpm 심볼릭 링크라 Vercel 함수에 파일이 들어가지 않아 요청 때 렌더링되는 `/sessions/[id]`의 메타데이터 단계에서 ENOENT가 났다. 빌드한 이미지를 `app/opengraph-image.png`(+ `.alt.txt`)로 고정해 런타임에 폰트가 필요 없게 했다. 문구를 바꾸면 `f5c39f1:src/app/opengraph-image.tsx`를 기준으로 이미지를 다시 만들어 교체한다.
 
 **4주차 완료 기준:** Step 6 통과.
 
