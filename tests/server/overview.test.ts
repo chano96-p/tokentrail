@@ -186,7 +186,9 @@ test("빈 DB는 0과 빈 배열", async () => {
 });
 
 test("getFilterOptions", async () => {
-  expect((await getFilterOptions(db)).lastImportedAt).toBeNull();
+  const empty = await getFilterOptions(db);
+  expect(empty.lastImportedAt).toBeNull();
+  expect(empty.lastActivityAt).toBeNull();
 
   await seed(db, [
     {
@@ -216,6 +218,8 @@ test("getFilterOptions", async () => {
   expect(options.projects.map((p) => p.name)).toEqual(["alpha", "zeta"]);
   expect(options.models).toEqual(["claude-a", "claude-b"]);
   expect(options.lastImportedAt).not.toBeNull();
+  // 데모 배너의 "기준" 날짜는 API 기준 시각(getReferenceNow)과 같은 마지막 호출 시각이다.
+  expect(options.lastActivityAt).toBe("2026-10-12T02:00:00.000Z");
 });
 
 test("복사된 호출은 sessionId 사전순 첫 세션의 프로젝트에 귀속된다", async () => {
