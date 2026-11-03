@@ -1049,7 +1049,7 @@ test('allowlist 프로젝트만, 별칭과 마스킹 적용, 숫자 보존', asy
 
 `pushSnapshot`: `@libsql/client`로 접속 → `sqlite_master`에서 `sqlite_%`가 아닌 테이블을 모두 `DROP` → `applyMigrations` → `createDb`로 `ImportedFile { id: 'demo', path: 'demo', size: 0, mtimeMs: 0, byteOffset: 0 }` 생성 → project·session·apiCall·event를 `createMany`(500개 단위), `sourceFileId: 'demo'`.
 
-- [ ] **Step 1: 실패하는 테스트 작성** (Turso 대신 임시 `file:` URL)
+- [x] **Step 1: 실패하는 테스트 작성** (Turso 대신 임시 `file:` URL)
 
 ```ts
 test('push한 DB에서 집계가 스냅샷과 같다', async () => {
@@ -1066,13 +1066,13 @@ test('두 번 push해도 중복이 없다', async () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/push.test.ts` / Expected: FAIL
-- [ ] **Step 3: 구현.** `scripts/demo-push.ts`는 `demo-snapshot.json`을 읽어 `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`으로 `pushSnapshot`. `"demo:push": "tsx --env-file=.env scripts/demo-push.ts"`.
-- [ ] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
+- [x] **Step 2: 실패 확인** — Run: `pnpm vitest run tests/core/push.test.ts` / Expected: FAIL
+- [x] **Step 3: 구현.** `scripts/demo-push.ts`는 `demo-snapshot.json`을 읽어 `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`으로 `pushSnapshot`. `"demo:push": "tsx --env-file=.env scripts/demo-push.ts"`.
+- [x] **Step 4: 통과 확인** — Run: `pnpm test` / Expected: PASS
 - [ ] **Step 5: Turso 준비 (수동).** Turso 가입 → DB 생성 → URL·토큰을 로컬 `.env`에 저장. `dashboard.config.ts`의 `demo.projects`·`aliases` 채우기 → `pnpm run demo:export` → `demo-snapshot.json`을 직접 열어 키·경로·회사 이름이 남았는지 검토 → `pnpm run demo:push`
 - [ ] **Step 6: Vercel 배포 (수동).** GitHub에 push → Vercel 프로젝트 연결 → env `APP_MODE=demo`, `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` → 배포. 빌드나 런타임에서 libsql 관련 오류가 나면 Turso 공식 Prisma 가이드(https://docs.turso.tech/sdk/ts/orm/prisma)의 서버리스 설정을 따른다.
   Expected: 배포 URL에서 배너 표시, Sync·원본 보기 없음, 대시보드·목록·상세가 스냅샷 데이터로 동작, `curl -XPOST <url>/api/sync` → 403
-- [ ] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음"
+- [ ] **Step 7: README.** 소개 한 단락, 데모 URL, 스크린샷 2장(대시보드, 세션 상세), 로컬 실행(`pnpm install` → `.env` 복사 후 `DATABASE_URL`을 절대경로로 수정 → `pnpm prisma migrate deploy` → `pnpm run sync` → `pnpm dev`), 설정 파일 설명, 데모 갱신 절차, "로그 포맷은 비공식이라 Claude Code 업데이트로 바뀔 수 있음". 데모 갱신 절차에는 "`demo:push`는 테이블을 지운 뒤 다시 채우므로, 중간에 실패하면 데모가 일부만 채워진 상태로 남는다. 다시 실행하면 복구된다"를 적는다(2026-11-03 리뷰)
 - [ ] **Step 8: Commit** — `"feat: 데모 push, 배포 설정, README"`
 
 **4주차 완료 기준:** Step 6 통과.

@@ -13,7 +13,8 @@
     "test": "vitest run",
     "postinstall": "prisma generate",
     "sync": "tsx --env-file=.env scripts/sync.ts",
-    "demo:export": "tsx --env-file=.env scripts/demo-export.ts"
+    "demo:export": "tsx --env-file=.env scripts/demo-export.ts",
+    "demo:push": "tsx --env-file=.env scripts/demo-push.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.8.1",
