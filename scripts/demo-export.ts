@@ -1,11 +1,25 @@
-import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
-import { buildSnapshot } from "@/core/anonymizer/snapshot";
+import {
+  buildSnapshot,
+  parseDemoOptions,
+  type DemoOptions,
+} from "@/core/anonymizer/snapshot";
 import { loadConfig } from "@/core/config";
 import { getDb } from "@/server/db";
 import { getAppMode } from "@/server/mode";
 
 const OUTPUT_PATH = "demo-snapshot.json";
+const DEMO_CONFIG_PATH = "dashboard.demo.json";
+
+// allowlist 경로에는 사용자 이름과 폴더 이름이 드러나서, 커밋하지 않는 로컬 파일을 먼저 읽는다.
+async function loadDemoConfig(): Promise<DemoOptions> {
+  if (!existsSync(DEMO_CONFIG_PATH)) return loadConfig().demo;
+  return parseDemoOptions(
+    JSON.parse(await readFile(DEMO_CONFIG_PATH, "utf-8")),
+  );
+}
 
 async function main() {
   // export 원본은 로컬 DB여야 한다. demo 모드의 getDb()는 공개 Turso를 가리킨다.
@@ -18,14 +32,14 @@ async function main() {
   const db = getDb();
 
   try {
-    const snapshot = await buildSnapshot(db, loadConfig().demo, {
+    const snapshot = await buildSnapshot(db, await loadDemoConfig(), {
       homeDir: os.homedir(),
       username: os.userInfo().username,
     });
 
     if (snapshot.projects.length === 0) {
       console.error(
-        "dashboard.config.ts의 demo.projects에 공개할 프로젝트 cwd를 추가하세요",
+        `${DEMO_CONFIG_PATH}의 projects에 공개할 프로젝트 cwd를 추가하세요`,
       );
       process.exitCode = 1;
       return;

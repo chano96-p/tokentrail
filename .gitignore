@@ -46,3 +46,5 @@ next-env.d.ts
 *.db
 *.db-journal
 demo-snapshot.json
+# 공개할 프로젝트 경로(allowlist)에 사용자 이름과 폴더 이름이 드러나 로컬에만 둔다
+dashboard.demo.json

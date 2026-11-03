@@ -66,6 +66,7 @@ export const config: DashboardConfig = {
     },
   },
   demo: {
+    // 실제 allowlist는 커밋하지 않는 dashboard.demo.json에 둔다. demo:export는 그 파일이 없을 때만 이 값을 쓴다.
     projects: [],
     aliases: {},
   },
