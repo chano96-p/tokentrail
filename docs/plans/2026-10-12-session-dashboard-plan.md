@@ -1033,7 +1033,7 @@ test('allowlist 프로젝트만, 별칭과 마스킹 적용, 숫자 보존', asy
 - [x] **Step 3: 구현**
 - [x] **Step 4: `scripts/demo-export.ts`.** `buildSnapshot(getDb(), loadConfig().demo, { homeDir: os.homedir(), username: os.userInfo().username })`. 비어 있으면 "dashboard.config.ts의 demo.projects에 공개할 프로젝트 cwd를 추가하세요"를 출력하고 exit 1. 아니면 `demo-snapshot.json`에 쓰고 프로젝트·세션·이벤트 수 출력. `package.json`에 `"demo:export": "tsx --env-file=.env scripts/demo-export.ts"`.
 - [x] **Step 5: 통과 확인** — Run: `pnpm test` / Expected: PASS
-- [ ] **Step 6: Commit** — `"feat: 데모용 익명화 스냅샷 export"`
+- [x] **Step 6: Commit** — `"feat: 데모용 익명화 스냅샷 export"`
 
 ---
 
