@@ -7,12 +7,12 @@ import { useState } from "react";
 import { RawViewer } from "./RawViewer";
 
 const KIND_LABEL: Record<TimelineEventView["kind"], string> = {
-  user: "USR",
-  assistant_text: "AST",
-  tool_use: "TOOL",
-  tool_result: "RES",
-  thinking: "THK",
-  system: "SYS",
+  user: "사용자",
+  assistant_text: "응답",
+  tool_use: "도구",
+  tool_result: "결과",
+  thinking: "생각",
+  system: "시스템",
 };
 
 function EventBody({ event }: { event: TimelineEventView }) {
@@ -20,13 +20,13 @@ function EventBody({ event }: { event: TimelineEventView }) {
     case "user":
     case "assistant_text":
       return (
-        <p className="line-clamp-4 whitespace-pre-wrap break-words">
+        <p className="line-clamp-4 whitespace-pre-wrap wrap-break-word">
           {event.preview || <span className="text-muted">(빈 메시지)</span>}
         </p>
       );
     case "tool_use":
       return (
-        <p className="min-w-0 break-words">
+        <p className="min-w-0 wrap-break-word">
           <span className="font-medium">{event.toolName ?? "tool"}</span>{" "}
           {event.inputSummary && (
             <code className="font-mono text-xs text-muted">
@@ -75,13 +75,11 @@ export function EventRow({
       className={isSubagent ? "ml-4 border-l-2 border-line pl-3 sm:ml-7" : ""}
     >
       <div
-        className={`grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-2 rounded-md px-2 py-1.5 text-sm ${
+        className={`grid grid-cols-[3rem_minmax(0,1fr)] items-baseline sm:grid-cols-[3rem_minmax(0,1fr)_auto] gap-2 rounded-lg px-2 py-1.5 text-sm ${
           event.kind === "user" && !isSubagent ? "bg-fill" : ""
         }`}
       >
-        <span className="font-mono text-[11px] text-muted">
-          {KIND_LABEL[event.kind]}
-        </span>
+        <span className="text-xs text-muted">{KIND_LABEL[event.kind]}</span>
         <div className="min-w-0">
           {isSubagent && (
             <span className="mr-1.5 font-mono text-[11px] text-fg">
@@ -90,7 +88,8 @@ export function EventRow({
           )}
           <EventBody event={event} />
         </div>
-        <div className="flex items-baseline gap-2 font-mono text-[11px] whitespace-nowrap text-muted">
+        {/* 좁은 화면에서는 토큰 배지가 본문 폭을 줄이지 않게 본문 아래 줄로 내린다. */}
+        <div className="col-start-2 flex items-baseline gap-2 text-xs whitespace-nowrap text-muted empty:hidden sm:col-start-auto">
           {event.tokens && (
             <span className="tabular-nums">
               {formatTokens(event.tokens.input)} in /{" "}

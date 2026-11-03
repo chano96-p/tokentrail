@@ -2,6 +2,7 @@ import { FilterBar } from "@/components/FilterBar";
 import {
   SessionTable,
   SessionTableSkeleton,
+  SortToggle,
 } from "@/components/sessions/SessionTable";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -13,7 +14,10 @@ export default function SessionsPage() {
   return (
     <Suspense fallback={<SessionTableSkeleton />}>
       <div className="grid gap-4">
-        <FilterBar />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <FilterBar />
+          <SortToggle />
+        </div>
         <SessionTable />
       </div>
     </Suspense>

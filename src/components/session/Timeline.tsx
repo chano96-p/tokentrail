@@ -1,6 +1,7 @@
 "use client";
 
 import { useTimeZone } from "@/app/providers";
+import { Panel } from "@/components/dashboard/Panel";
 import { formatDateTime } from "@/lib/format";
 import { useUrlFilters } from "@/lib/useUrlFilters";
 import type { Turn } from "@/server/queries/sessionDetail";
@@ -16,7 +17,7 @@ function HideToggles({
   onChange: (next: Set<string>) => void;
 }) {
   return (
-    <fieldset className="flex items-center gap-3 text-xs text-muted">
+    <fieldset className="flex shrink-0 items-center gap-3 text-xs text-muted">
       <legend className="sr-only">숨기기</legend>
       <span aria-hidden="true">숨기기:</span>
       {HIDEABLE_KINDS.map((kind) => (
@@ -30,7 +31,7 @@ function HideToggles({
               else next.delete(kind);
               onChange(next);
             }}
-            className="accent-(--fg)"
+            className="accent-fg"
           />
           {kind}
         </label>
@@ -61,18 +62,17 @@ export function Timeline({
   let turnNumber = 0;
 
   return (
-    <div className="grid gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium text-muted">
-          타임라인 · 턴 {turns.filter((turn) => turn.id !== "start").length}개
-        </h2>
+    <Panel
+      title="타임라인"
+      action={
         <HideToggles
           hidden={hidden}
           onChange={(next) => set({ hide: [...next].join(",") })}
         />
-      </div>
+      }
+    >
       {visibleTurns.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-surface p-6 text-center text-sm text-muted">
+        <p className="py-6 text-center text-sm text-muted">
           표시할 이벤트가 없습니다.
         </p>
       ) : (
@@ -83,11 +83,11 @@ export function Timeline({
             <section
               key={turn.id}
               aria-label={label}
-              className="rounded-lg border border-line bg-surface p-2"
+              className="-mx-5 border-t border-line px-3 py-3 sm:-mx-6 sm:px-4"
             >
-              <h3 className="flex justify-between px-2 pb-1 text-xs text-muted">
-                <span>{label}</span>
-                <span className="font-mono tabular-nums">
+              <h3 className="flex justify-between px-2 pb-1.5 text-xs text-muted">
+                <span className="font-medium text-fg">{label}</span>
+                <span className="tabular-nums">
                   {formatDateTime(turn.events[0].timestamp, timeZone)}
                 </span>
               </h3>
@@ -104,6 +104,6 @@ export function Timeline({
           );
         })
       )}
-    </div>
+    </Panel>
   );
 }

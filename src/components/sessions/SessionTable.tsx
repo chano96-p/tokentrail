@@ -24,15 +24,14 @@ const SORT_OPTIONS = [
 
 export function SessionTableSkeleton() {
   return (
-    <div className="grid animate-pulse gap-2" aria-busy="true">
-      {Array.from({ length: 8 }, (_, i) => (
-        <div key={i} className="h-10 rounded-md bg-line/60" />
-      ))}
-    </div>
+    <div
+      className="h-112 animate-pulse rounded-2xl bg-line/60"
+      aria-busy="true"
+    />
   );
 }
 
-function SortToggle() {
+export function SortToggle() {
   const { values, set } = useUrlFilters();
   const active = values.sort === "tokens" ? "tokens" : "recent";
   return (
@@ -60,32 +59,32 @@ function SessionRow({ session }: { session: SessionListItem }) {
   const timeZone = useTimeZone();
   return (
     // 행 전체를 누를 수 있게 제목 링크의 클릭 영역을 행 크기로 넓힌다(링크는 하나만 둬서 탭 순서를 단순하게).
-    <tr className="relative border-t border-line hover:bg-fill/60">
+    <tr className="relative border-b border-line last:border-0 hover:bg-fill/60">
       {/* 표 셀의 max-width는 브라우저마다 다르게 처리돼, 너비 제한과 말줄임은 셀 안쪽 요소에 건다. */}
-      <td className="px-3 py-2">
+      <td className="px-5 py-3">
         <Link
           href={`/sessions/${encodeURIComponent(session.id)}`}
-          className="block max-w-80 truncate after:absolute after:inset-0"
+          className="block max-w-80 truncate font-medium after:absolute after:inset-0"
         >
           {session.title ?? <span className="text-muted">제목 없음</span>}
         </Link>
       </td>
-      <td className="px-3 py-2 text-muted">
+      <td className="px-3 py-3 text-muted">
         <div className="max-w-40 truncate">{session.projectName}</div>
       </td>
-      <td className="px-3 py-2 font-mono text-xs text-muted">
+      <td className="px-3 py-3 font-mono text-xs text-muted">
         <div className="max-w-40 truncate">{session.gitBranch ?? "–"}</div>
       </td>
-      <td className="px-3 py-2 text-xs whitespace-nowrap tabular-nums">
+      <td className="px-3 py-3 whitespace-nowrap text-muted tabular-nums">
         {formatDateTime(session.startedAt, timeZone)}
       </td>
-      <td className="px-3 py-2 text-right text-xs whitespace-nowrap tabular-nums">
+      <td className="px-3 py-3 text-right whitespace-nowrap text-muted tabular-nums">
         {formatDuration(session.startedAt, session.endedAt)}
       </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums">
+      <td className="px-3 py-3 text-right font-medium tabular-nums">
         {formatTokens(session.totalTokens)}
       </td>
-      <td className="px-3 py-2 text-right text-xs tabular-nums">
+      <td className="px-5 py-3 text-right text-muted tabular-nums">
         {session.subagentCount > 0 ? session.subagentCount : "–"}
       </td>
     </tr>
@@ -113,28 +112,11 @@ export function SessionTable() {
     placeholderData: keepPreviousData,
   });
 
-  const header = (
-    // 페이지 제목은 레이아웃의 PageHeading이 그린다.
-    <div className="flex items-center justify-end gap-3">
-      <SortToggle />
-    </div>
-  );
-
-  if (sessions.isPending) {
-    return (
-      <div className="grid gap-4">
-        {header}
-        <SessionTableSkeleton />
-      </div>
-    );
-  }
+  if (sessions.isPending) return <SessionTableSkeleton />;
   const pages = sessions.data?.pages;
   if (!pages) {
     return (
-      <div className="grid gap-4">
-        {header}
-        <LoadError error={sessions.error} onRetry={() => sessions.refetch()} />
-      </div>
+      <LoadError error={sessions.error} onRetry={() => sessions.refetch()} />
     );
   }
 
@@ -142,25 +124,24 @@ export function SessionTable() {
 
   return (
     <div className="grid gap-4">
-      {header}
       {/* "더 보기" 실패는 이미 보인 목록과 상관없어 버튼 옆에 따로 안내한다. */}
       {sessions.isError && !sessions.isFetchNextPageError && <StaleNotice />}
       {items.length === 0 ? (
         <EmptyState hasAnyData={(filters.data?.projects.length ?? 0) > 0} />
       ) : (
         <div
-          className={`overflow-x-auto rounded-lg border border-line bg-surface transition-opacity ${sessions.isPlaceholderData ? "opacity-60" : ""}`}
+          className={`overflow-x-auto rounded-2xl border border-line bg-surface transition-opacity ${sessions.isPlaceholderData ? "opacity-60" : ""}`}
         >
           <table className="w-full text-sm">
-            <thead className="bg-bg text-left text-xs text-muted">
-              <tr>
-                <th className="px-3 py-2 font-medium">제목</th>
-                <th className="px-3 py-2 font-medium">프로젝트</th>
-                <th className="px-3 py-2 font-medium">브랜치</th>
-                <th className="px-3 py-2 font-medium">시작</th>
-                <th className="px-3 py-2 text-right font-medium">소요</th>
-                <th className="px-3 py-2 text-right font-medium">토큰</th>
-                <th className="px-3 py-2 text-right font-medium">
+            <thead className="text-left text-xs text-muted">
+              <tr className="border-b border-line">
+                <th className="px-5 py-3 font-normal">제목</th>
+                <th className="px-3 py-3 font-normal">프로젝트</th>
+                <th className="px-3 py-3 font-normal">브랜치</th>
+                <th className="px-3 py-3 font-normal">시작</th>
+                <th className="px-3 py-3 text-right font-normal">소요</th>
+                <th className="px-3 py-3 text-right font-normal">토큰</th>
+                <th className="px-5 py-3 text-right font-normal">
                   <abbr title="서브에이전트" className="no-underline">
                     서브
                   </abbr>
@@ -185,7 +166,7 @@ export function SessionTable() {
           type="button"
           onClick={() => sessions.fetchNextPage()}
           disabled={sessions.isFetchingNextPage}
-          className="mx-auto rounded-md border border-line px-4 py-1.5 text-sm text-muted hover:text-fg disabled:opacity-60"
+          className="mx-auto h-9 rounded-lg border border-line bg-surface px-4 text-sm text-muted hover:bg-fill hover:text-fg disabled:opacity-60"
         >
           {sessions.isFetchingNextPage ? "불러오는 중…" : "더 보기"}
         </button>

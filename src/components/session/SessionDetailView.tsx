@@ -10,10 +10,12 @@ import { Timeline } from "./Timeline";
 export function SessionDetailSkeleton() {
   return (
     <div className="grid animate-pulse gap-4" aria-busy="true">
-      <div className="h-24 rounded-lg bg-line/60" />
-      {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="h-32 rounded-lg bg-line/60" />
-      ))}
+      <div className="h-5 w-24 rounded bg-line/60" />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="h-48 rounded-2xl bg-line/60 lg:col-span-2" />
+        <div className="h-48 rounded-2xl bg-line/60" />
+      </div>
+      <div className="h-96 rounded-2xl bg-line/60" />
     </div>
   );
 }
@@ -32,7 +34,7 @@ export function SessionDetailView({ id }: { id: string }) {
   if (detail.isPending) return <SessionDetailSkeleton />;
   if (isNotFound(detail.error)) {
     return (
-      <div className="rounded-lg border border-dashed border-line bg-surface p-8 text-center text-sm">
+      <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-sm">
         <p>세션을 찾을 수 없습니다</p>
         <Link
           href="/sessions"
@@ -48,9 +50,14 @@ export function SessionDetailView({ id }: { id: string }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4">
       {detail.isError && <StaleNotice />}
-      <SessionHeader session={detail.data.session} />
+      <SessionHeader
+        session={detail.data.session}
+        turnCount={
+          detail.data.turns.filter((turn) => turn.id !== "start").length
+        }
+      />
       <Timeline sessionId={id} turns={detail.data.turns} />
     </div>
   );
