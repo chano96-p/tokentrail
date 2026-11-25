@@ -113,3 +113,5 @@ pnpm format:check
 ## 주의
 
 Claude Code 세션 로그 포맷은 공개된 사양이 아닙니다. Claude Code가 업데이트되면 필드가 바뀌어 일부 줄을 읽지 못할 수 있습니다. 이때 sync는 읽지 못한 줄 수를 "건너뛴 줄"로 알려 줍니다.
+
+agent-bot 테스트
